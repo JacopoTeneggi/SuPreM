@@ -15,8 +15,8 @@
 
 from collections import OrderedDict
 
-import SimpleITK as sitk
 import numpy as np
+import SimpleITK as sitk
 from batchgenerators.utilities.file_and_folder_operations import *
 from nnunet.paths import nnUNet_raw_data
 from skimage import io
@@ -28,13 +28,12 @@ def export_for_submission(predicted_npz, out_file):
     (100% non-membrane certainty). We use the softmax output for that
     :return:
     """
-    a = np.load(predicted_npz)['softmax']
+    a = np.load(predicted_npz)["softmax"]
     a = a / a.sum(0)[None]
     # channel 0 is non-membrane prob
     nonmembr_prob = a[0]
     assert out_file.endswith(".tif")
     io.imsave(out_file, nonmembr_prob.astype(np.float32))
-
 
 
 if __name__ == "__main__":
@@ -62,7 +61,9 @@ if __name__ == "__main__":
     maybe_mkdir_p(labelstr)
 
     img_tr_itk = sitk.GetImageFromArray(train_volume.astype(np.float32))
-    lab_tr_itk = sitk.GetImageFromArray(1 - train_labels) # walls are foreground, cells background
+    lab_tr_itk = sitk.GetImageFromArray(
+        1 - train_labels
+    )  # walls are foreground, cells background
     img_te_itk = sitk.GetImageFromArray(test_volume.astype(np.float32))
 
     img_tr_itk.SetSpacing((4, 4, 50))
@@ -85,21 +86,26 @@ if __name__ == "__main__":
     sitk.WriteImage(img_te_itk, join(imagests, "testing.nii.gz"))
 
     json_dict = OrderedDict()
-    json_dict['name'] = task_name
-    json_dict['description'] = task_name
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = "see challenge website"
-    json_dict['licence'] = "see challenge website"
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
+    json_dict["name"] = task_name
+    json_dict["description"] = task_name
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = "see challenge website"
+    json_dict["licence"] = "see challenge website"
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {
         "0": "EM",
     }
-    json_dict['labels'] = {i: str(i) for i in range(2)}
+    json_dict["labels"] = {i: str(i) for i in range(2)}
 
-    json_dict['numTraining'] = 5
-    json_dict['numTest'] = 1
-    json_dict['training'] = [{'image': "./imagesTr/training%d.nii.gz" % i, "label": "./labelsTr/training%d.nii.gz" % i} for i in
-                             range(5)]
-    json_dict['test'] = ["./imagesTs/testing.nii.gz"]
+    json_dict["numTraining"] = 5
+    json_dict["numTest"] = 1
+    json_dict["training"] = [
+        {
+            "image": "./imagesTr/training%d.nii.gz" % i,
+            "label": "./labelsTr/training%d.nii.gz" % i,
+        }
+        for i in range(5)
+    ]
+    json_dict["test"] = ["./imagesTs/testing.nii.gz"]
 
     save_json(json_dict, os.path.join(out_base, "dataset.json"))

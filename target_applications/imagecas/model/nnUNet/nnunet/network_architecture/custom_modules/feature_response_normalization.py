@@ -13,11 +13,11 @@
 #    limitations under the License.
 
 
+import torch
+import torch.jit
 from nnunet.utilities.tensor_utilities import mean_tensor
 from torch import nn
-import torch
 from torch.nn.parameter import Parameter
-import torch.jit
 
 
 class FRN3D(nn.Module):

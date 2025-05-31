@@ -13,10 +13,11 @@
 #    limitations under the License.
 
 
-import torch
-from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from functools import partial
+
+import torch
 import torch.nn.functional as F
+from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from torch.nn.modules.loss import _Loss
 
 
@@ -25,7 +26,7 @@ def sigmoid_focal_loss(
     targets: torch.Tensor,
     gamma: float = 2.0,
     alpha: float = 0.25,
-    reduction: str = "mean"
+    reduction: str = "mean",
 ):
     """
     Compute binary focal loss between target and output logits.
@@ -45,9 +46,7 @@ def sigmoid_focal_loss(
     """
     targets = targets.type(outputs.type())
 
-    logpt = -F.binary_cross_entropy_with_logits(
-        outputs, targets, reduction="none"
-    )
+    logpt = -F.binary_cross_entropy_with_logits(outputs, targets, reduction="none")
     pt = torch.exp(logpt)
 
     # compute the loss
@@ -71,7 +70,7 @@ def reduced_focal_loss(
     targets: torch.Tensor,
     threshold: float = 0.5,
     gamma: float = 2.0,
-    reduction="mean"
+    reduction="mean",
 ):
     """
     Compute reduced focal loss between target and output logits.
@@ -97,13 +96,11 @@ def reduced_focal_loss(
     """
     targets = targets.type(outputs.type())
 
-    logpt = -F.binary_cross_entropy_with_logits(
-        outputs, targets, reduction="none"
-    )
+    logpt = -F.binary_cross_entropy_with_logits(outputs, targets, reduction="none")
     pt = torch.exp(logpt)
 
     # compute the loss
-    focal_reduction = ((1. - pt) / threshold).pow(gamma)
+    focal_reduction = ((1.0 - pt) / threshold).pow(gamma)
     focal_reduction[pt < threshold] = 1
 
     loss = -focal_reduction * logpt
@@ -139,14 +136,11 @@ class FocalLossBinary(_Loss):
                 reduced_focal_loss,
                 gamma=gamma,
                 threshold=threshold,
-                reduction=reduction
+                reduction=reduction,
             )
         else:
             self.loss_fn = partial(
-                sigmoid_focal_loss,
-                gamma=gamma,
-                alpha=alpha,
-                reduction=reduction
+                sigmoid_focal_loss, gamma=gamma, alpha=alpha, reduction=reduction
             )
 
     def forward(self, logits, targets):
@@ -204,8 +198,27 @@ class FocalLossMultiClass(FocalLossBinary):
 
 
 class nnUNetTrainerV2_focalLoss(nnUNetTrainerV2):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
+    def __init__(
+        self,
+        plans_file,
+        fold,
+        output_folder=None,
+        dataset_directory=None,
+        batch_dice=True,
+        stage=None,
+        unpack_data=True,
+        deterministic=True,
+        fp16=False,
+    ):
+        super().__init__(
+            plans_file,
+            fold,
+            output_folder,
+            dataset_directory,
+            batch_dice,
+            stage,
+            unpack_data,
+            deterministic,
+            fp16,
+        )
         self.loss = FocalLossMultiClass()

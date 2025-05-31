@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from monai.networks.blocks.dints_block import (
     ActiConvNormBlock,
     FactorizedIncreaseBlock,
@@ -19,6 +18,7 @@ from monai.utils import optional_import
 # solving shortest path problem
 csr_matrix, _ = optional_import("scipy.sparse", name="csr_matrix")
 dijkstra, _ = optional_import("scipy.sparse.csgraph", name="dijkstra")
+
 
 @torch.jit.interface
 class CellInterface(torch.nn.Module):
@@ -92,7 +92,15 @@ class _ActiConvNormBlockWithRAMCost(ActiConvNormBlock):
         act_name: Union[Tuple, str] = "RELU",
         norm_name: Union[Tuple, str] = ("INSTANCE", {"affine": True}),
     ):
-        super().__init__(in_channel, out_channel, kernel_size, padding, spatial_dims, act_name, norm_name)
+        super().__init__(
+            in_channel,
+            out_channel,
+            kernel_size,
+            padding,
+            spatial_dims,
+            act_name,
+            norm_name,
+        )
         self.ram_cost = 1 + in_channel / out_channel * 2
 
 
@@ -107,7 +115,9 @@ class _P3DActiConvNormBlockWithRAMCost(P3DActiConvNormBlock):
         act_name: Union[Tuple, str] = "RELU",
         norm_name: Union[Tuple, str] = ("INSTANCE", {"affine": True}),
     ):
-        super().__init__(in_channel, out_channel, kernel_size, padding, p3dmode, act_name, norm_name)
+        super().__init__(
+            in_channel, out_channel, kernel_size, padding, p3dmode, act_name, norm_name
+        )
         # 1 in_channel (activation) + 1 in_channel (convolution) +
         # 1 out_channel (convolution) + 1 out_channel (normalization)
         self.ram_cost = 2 + 2 * in_channel / out_channel
@@ -203,16 +213,26 @@ class Cell(CellInterface):
     # Define 2D operation set, parameterized by the number of channels
     OPS2D = {
         "skip_connect": lambda _c: _IdentityWithRAMCost(),
-        "conv_3x3": lambda c: _ActiConvNormBlockWithRAMCost(c, c, 3, padding=1, spatial_dims=2),
+        "conv_3x3": lambda c: _ActiConvNormBlockWithRAMCost(
+            c, c, 3, padding=1, spatial_dims=2
+        ),
     }
 
     # Define 3D operation set, parameterized by the number of channels
     OPS3D = {
         "skip_connect": lambda _c: _IdentityWithRAMCost(),
-        "conv_3x3x3": lambda c: _ActiConvNormBlockWithRAMCost(c, c, 3, padding=1, spatial_dims=3),
-        "conv_3x3x1": lambda c: _P3DActiConvNormBlockWithRAMCost(c, c, 3, padding=1, p3dmode=0),
-        "conv_3x1x3": lambda c: _P3DActiConvNormBlockWithRAMCost(c, c, 3, padding=1, p3dmode=1),
-        "conv_1x3x3": lambda c: _P3DActiConvNormBlockWithRAMCost(c, c, 3, padding=1, p3dmode=2),
+        "conv_3x3x3": lambda c: _ActiConvNormBlockWithRAMCost(
+            c, c, 3, padding=1, spatial_dims=3
+        ),
+        "conv_3x3x1": lambda c: _P3DActiConvNormBlockWithRAMCost(
+            c, c, 3, padding=1, p3dmode=0
+        ),
+        "conv_3x1x3": lambda c: _P3DActiConvNormBlockWithRAMCost(
+            c, c, 3, padding=1, p3dmode=1
+        ),
+        "conv_1x3x3": lambda c: _P3DActiConvNormBlockWithRAMCost(
+            c, c, 3, padding=1, p3dmode=2
+        ),
     }
 
     # Define connection operation set, parameterized by the number of channels
@@ -240,25 +260,45 @@ class Cell(CellInterface):
 
         if rate == -1:  # downsample
             self.preprocess = self.ConnOPS["down"](
-                c_prev, c, spatial_dims=self._spatial_dims, act_name=self._act_name, norm_name=self._norm_name
+                c_prev,
+                c,
+                spatial_dims=self._spatial_dims,
+                act_name=self._act_name,
+                norm_name=self._norm_name,
             )
         elif rate == 1:  # upsample
             self.preprocess = self.ConnOPS["up"](
-                c_prev, c, spatial_dims=self._spatial_dims, act_name=self._act_name, norm_name=self._norm_name
+                c_prev,
+                c,
+                spatial_dims=self._spatial_dims,
+                act_name=self._act_name,
+                norm_name=self._norm_name,
             )
         else:
             if c_prev == c:
                 self.preprocess = self.ConnOPS["identity"]()
             else:
                 self.preprocess = self.ConnOPS["align_channels"](
-                    c_prev, c, 1, 0, spatial_dims=self._spatial_dims, act_name=self._act_name, norm_name=self._norm_name
+                    c_prev,
+                    c,
+                    1,
+                    0,
+                    spatial_dims=self._spatial_dims,
+                    act_name=self._act_name,
+                    norm_name=self._norm_name,
                 )
 
         # Define 2D operation set, parameterized by the number of channels
         self.OPS2D = {
             "skip_connect": lambda _c: _IdentityWithRAMCost(),
             "conv_3x3": lambda c: _ActiConvNormBlockWithRAMCost(
-                c, c, 3, padding=1, spatial_dims=2, act_name=self._act_name, norm_name=self._norm_name
+                c,
+                c,
+                3,
+                padding=1,
+                spatial_dims=2,
+                act_name=self._act_name,
+                norm_name=self._norm_name,
             ),
         }
 
@@ -266,16 +306,40 @@ class Cell(CellInterface):
         self.OPS3D = {
             "skip_connect": lambda _c: _IdentityWithRAMCost(),
             "conv_3x3x3": lambda c: _ActiConvNormBlockWithRAMCost(
-                c, c, 3, padding=1, spatial_dims=3, act_name=self._act_name, norm_name=self._norm_name
+                c,
+                c,
+                3,
+                padding=1,
+                spatial_dims=3,
+                act_name=self._act_name,
+                norm_name=self._norm_name,
             ),
             "conv_3x3x1": lambda c: _P3DActiConvNormBlockWithRAMCost(
-                c, c, 3, padding=1, p3dmode=0, act_name=self._act_name, norm_name=self._norm_name
+                c,
+                c,
+                3,
+                padding=1,
+                p3dmode=0,
+                act_name=self._act_name,
+                norm_name=self._norm_name,
             ),
             "conv_3x1x3": lambda c: _P3DActiConvNormBlockWithRAMCost(
-                c, c, 3, padding=1, p3dmode=1, act_name=self._act_name, norm_name=self._norm_name
+                c,
+                c,
+                3,
+                padding=1,
+                p3dmode=1,
+                act_name=self._act_name,
+                norm_name=self._norm_name,
             ),
             "conv_1x3x3": lambda c: _P3DActiConvNormBlockWithRAMCost(
-                c, c, 3, padding=1, p3dmode=2, act_name=self._act_name, norm_name=self._norm_name
+                c,
+                c,
+                3,
+                padding=1,
+                p3dmode=2,
+                act_name=self._act_name,
+                norm_name=self._norm_name,
             ),
         }
 
@@ -285,7 +349,9 @@ class Cell(CellInterface):
         elif self._spatial_dims == 3:
             self.OPS = self.OPS3D
         else:
-            raise NotImplementedError(f"Spatial dimensions {self._spatial_dims} is not supported.")
+            raise NotImplementedError(
+                f"Spatial dimensions {self._spatial_dims} is not supported."
+            )
 
         self.op = MixedOp(c, self.OPS, arch_code_c)
 
@@ -298,6 +364,7 @@ class Cell(CellInterface):
         x = self.preprocess(x)
         x = self.op(x, weight)
         return x
+
 
 class TopologyConstruction(nn.Module):
     """
@@ -350,10 +417,11 @@ class TopologyConstruction(nn.Module):
         use_downsample: bool = True,
         device: str = "cpu",
     ):
-
         super().__init__()
 
-        self.filter_nums = [int(n_feat * channel_mul) for n_feat in (32, 64, 128, 256, 512)]
+        self.filter_nums = [
+            int(n_feat * channel_mul) for n_feat in (32, 64, 128, 256, 512)
+        ]
         self.num_blocks = num_blocks
         self.num_depths = num_depths
         self._spatial_dims = spatial_dims
@@ -370,7 +438,9 @@ class TopologyConstruction(nn.Module):
         # Calculate predefined parameters for topology search and decoding
         arch_code2in, arch_code2out = [], []
         for i in range(Cell.DIRECTIONS * self.num_depths - 2):
-            arch_code2in.append((i + 1) // Cell.DIRECTIONS - 1 + (i + 1) % Cell.DIRECTIONS)
+            arch_code2in.append(
+                (i + 1) // Cell.DIRECTIONS - 1 + (i + 1) % Cell.DIRECTIONS
+            )
         arch_code2ops = ([-1, 0, 1] * self.num_depths)[1:-1]
         for m in range(self.num_depths):
             arch_code2out.extend([m, m, m])
@@ -381,11 +451,17 @@ class TopologyConstruction(nn.Module):
 
         # define NAS search space
         if arch_code is None:
-            arch_code_a = torch.ones((self.num_blocks, len(self.arch_code2out))).to(self.device)
-            arch_code_c = torch.ones((self.num_blocks, len(self.arch_code2out), self.num_cell_ops)).to(self.device)
+            arch_code_a = torch.ones((self.num_blocks, len(self.arch_code2out))).to(
+                self.device
+            )
+            arch_code_c = torch.ones(
+                (self.num_blocks, len(self.arch_code2out), self.num_cell_ops)
+            ).to(self.device)
         else:
             arch_code_a = torch.from_numpy(arch_code[0]).to(self.device)
-            arch_code_c = F.one_hot(torch.from_numpy(arch_code[1]).to(torch.int64), self.num_cell_ops).to(self.device)
+            arch_code_c = F.one_hot(
+                torch.from_numpy(arch_code[1]).to(torch.int64), self.num_cell_ops
+            ).to(self.device)
 
         self.arch_code_a = arch_code_a
         self.arch_code_c = arch_code_c
@@ -395,8 +471,12 @@ class TopologyConstruction(nn.Module):
             for res_idx in range(len(self.arch_code2out)):
                 if self.arch_code_a[blk_idx, res_idx] == 1:
                     self.cell_tree[str((blk_idx, res_idx))] = cell(
-                        self.filter_nums[self.arch_code2in[res_idx] + int(use_downsample)],
-                        self.filter_nums[self.arch_code2out[res_idx] + int(use_downsample)],
+                        self.filter_nums[
+                            self.arch_code2in[res_idx] + int(use_downsample)
+                        ],
+                        self.filter_nums[
+                            self.arch_code2out[res_idx] + int(use_downsample)
+                        ],
                         self.arch_code2ops[res_idx],
                         self.arch_code_c[blk_idx, res_idx],
                         self._spatial_dims,
@@ -405,8 +485,10 @@ class TopologyConstruction(nn.Module):
                     )
 
     def forward(self, x):
-        """This function to be implemented by the architecture instances or search spaces."""
+        """This function to be implemented by the architecture instances or search spaces.
+        """
         pass
+
 
 class TopologyInstance(TopologyConstruction):
     """
@@ -445,7 +527,6 @@ class TopologyInstance(TopologyConstruction):
             device=device,
         )
 
-
     def forward(self, x: List[torch.Tensor]) -> List[torch.Tensor]:
         """
         Args:
@@ -459,12 +540,16 @@ class TopologyInstance(TopologyConstruction):
                 if activation:
                     mod: CellInterface = self.cell_tree[str((blk_idx, res_idx))]
                     _out = mod.forward(
-                        x=inputs[self.arch_code2in[res_idx]], weight=torch.ones_like(self.arch_code_c[blk_idx, res_idx])
+                        x=inputs[self.arch_code2in[res_idx]],
+                        weight=torch.ones_like(self.arch_code_c[blk_idx, res_idx]),
                     )
-                    outputs[self.arch_code2out[res_idx]] = outputs[self.arch_code2out[res_idx]] + _out
+                    outputs[self.arch_code2out[res_idx]] = (
+                        outputs[self.arch_code2out[res_idx]] + _out
+                    )
             inputs = outputs
 
         return inputs
+
 
 class DiNTS(nn.Module):
     """
@@ -522,7 +607,9 @@ class DiNTS(nn.Module):
         self.num_blocks = dints_space.num_blocks
         self.num_depths = dints_space.num_depths
         if spatial_dims not in (2, 3):
-            raise NotImplementedError(f"Spatial dimensions {spatial_dims} is not supported.")
+            raise NotImplementedError(
+                f"Spatial dimensions {spatial_dims} is not supported."
+            )
         self._spatial_dims = spatial_dims
         if node_a is None:
             self.node_a = torch.ones((self.num_blocks + 1, self.num_depths))
@@ -538,7 +625,9 @@ class DiNTS(nn.Module):
             # define downsample stems before DiNTS search
             if use_downsample:
                 self.stem_down[str(res_idx)] = StemTS(
-                    nn.Upsample(scale_factor=1 / (2**res_idx), mode=mode, align_corners=True),
+                    nn.Upsample(
+                        scale_factor=1 / (2**res_idx), mode=mode, align_corners=True
+                    ),
                     conv_type(
                         in_channels=in_channels,
                         out_channels=self.filter_nums[res_idx],
@@ -549,7 +638,11 @@ class DiNTS(nn.Module):
                         bias=False,
                         dilation=1,
                     ),
-                    get_norm_layer(name=norm_name, spatial_dims=spatial_dims, channels=self.filter_nums[res_idx]),
+                    get_norm_layer(
+                        name=norm_name,
+                        spatial_dims=spatial_dims,
+                        channels=self.filter_nums[res_idx],
+                    ),
                     get_act_layer(name=act_name),
                     conv_type(
                         in_channels=self.filter_nums[res_idx],
@@ -561,7 +654,11 @@ class DiNTS(nn.Module):
                         bias=False,
                         dilation=1,
                     ),
-                    get_norm_layer(name=norm_name, spatial_dims=spatial_dims, channels=self.filter_nums[res_idx + 1]),
+                    get_norm_layer(
+                        name=norm_name,
+                        spatial_dims=spatial_dims,
+                        channels=self.filter_nums[res_idx + 1],
+                    ),
                 )
                 self.stem_up[str(res_idx)] = StemTS(
                     get_act_layer(name=act_name),
@@ -575,13 +672,19 @@ class DiNTS(nn.Module):
                         bias=False,
                         dilation=1,
                     ),
-                    get_norm_layer(name=norm_name, spatial_dims=spatial_dims, channels=self.filter_nums[res_idx]),
+                    get_norm_layer(
+                        name=norm_name,
+                        spatial_dims=spatial_dims,
+                        channels=self.filter_nums[res_idx],
+                    ),
                     nn.Upsample(scale_factor=2, mode=mode, align_corners=True),
                 )
 
             else:
                 self.stem_down[str(res_idx)] = StemTS(
-                    nn.Upsample(scale_factor=1 / (2**res_idx), mode=mode, align_corners=True),
+                    nn.Upsample(
+                        scale_factor=1 / (2**res_idx), mode=mode, align_corners=True
+                    ),
                     conv_type(
                         in_channels=in_channels,
                         out_channels=self.filter_nums[res_idx],
@@ -592,7 +695,11 @@ class DiNTS(nn.Module):
                         bias=False,
                         dilation=1,
                     ),
-                    get_norm_layer(name=norm_name, spatial_dims=spatial_dims, channels=self.filter_nums[res_idx]),
+                    get_norm_layer(
+                        name=norm_name,
+                        spatial_dims=spatial_dims,
+                        channels=self.filter_nums[res_idx],
+                    ),
                 )
                 self.stem_up[str(res_idx)] = StemTS(
                     get_act_layer(name=act_name),
@@ -607,9 +714,13 @@ class DiNTS(nn.Module):
                         dilation=1,
                     ),
                     get_norm_layer(
-                        name=norm_name, spatial_dims=spatial_dims, channels=self.filter_nums[max(res_idx - 1, 0)]
+                        name=norm_name,
+                        spatial_dims=spatial_dims,
+                        channels=self.filter_nums[max(res_idx - 1, 0)],
                     ),
-                    nn.Upsample(scale_factor=2 ** (res_idx != 0), mode=mode, align_corners=True),
+                    nn.Upsample(
+                        scale_factor=2 ** (res_idx != 0), mode=mode, align_corners=True
+                    ),
                 )
 
     def weight_parameters(self):
@@ -647,26 +758,27 @@ class DiNTS(nn.Module):
 
         return outputs[-1], _temp
 
+
 if __name__ == "__main__":
-    ckpt = torch.load('./arch_code_cvpr.pth')
+    ckpt = torch.load("./arch_code_cvpr.pth")
     node_a = ckpt["node_a"]
     arch_code_a = ckpt["arch_code_a"]
     arch_code_c = ckpt["arch_code_c"]
 
     dints_space = TopologyInstance(
-            channel_mul=1.0,
-            num_blocks=12,
-            num_depths=4,
-            use_downsample=True,
-            arch_code=[arch_code_a, arch_code_c]
-        )
+        channel_mul=1.0,
+        num_blocks=12,
+        num_depths=4,
+        use_downsample=True,
+        arch_code=[arch_code_a, arch_code_c],
+    )
 
     net = DiNTS(
-            dints_space=dints_space,
-            in_channels=1,
-            num_classes=3,
-            use_downsample=True,
-            node_a=node_a,
-        )
+        dints_space=dints_space,
+        in_channels=1,
+        num_classes=3,
+        use_downsample=True,
+        node_a=node_a,
+    )
     input_tensor = torch.zeros(1, 1, 96, 96, 96)
     net(input_tensor)

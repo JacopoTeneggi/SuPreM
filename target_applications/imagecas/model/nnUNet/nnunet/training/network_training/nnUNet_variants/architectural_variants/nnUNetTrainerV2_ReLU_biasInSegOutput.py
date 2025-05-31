@@ -31,16 +31,35 @@ class nnUNetTrainerV2_ReLU_biasInSegOutput(nnUNetTrainerV2):
             dropout_op = nn.Dropout2d
             norm_op = nn.InstanceNorm2d
 
-        norm_op_kwargs = {'eps': 1e-5, 'affine': True}
-        dropout_op_kwargs = {'p': 0, 'inplace': True}
+        norm_op_kwargs = {"eps": 1e-5, "affine": True}
+        dropout_op_kwargs = {"p": 0, "inplace": True}
         net_nonlin = nn.ReLU
-        net_nonlin_kwargs = {'inplace': True}
-        self.network = Generic_UNet(self.num_input_channels, self.base_num_features, self.num_classes,
-                                    len(self.net_num_pool_op_kernel_sizes),
-                                    self.conv_per_stage, 2, conv_op, norm_op, norm_op_kwargs, dropout_op, dropout_op_kwargs,
-                                    net_nonlin, net_nonlin_kwargs, True, False, lambda x: x, InitWeights_He(0),
-                                    self.net_num_pool_op_kernel_sizes, self.net_conv_kernel_sizes, False, True, True,
-                                    seg_output_use_bias=True)
+        net_nonlin_kwargs = {"inplace": True}
+        self.network = Generic_UNet(
+            self.num_input_channels,
+            self.base_num_features,
+            self.num_classes,
+            len(self.net_num_pool_op_kernel_sizes),
+            self.conv_per_stage,
+            2,
+            conv_op,
+            norm_op,
+            norm_op_kwargs,
+            dropout_op,
+            dropout_op_kwargs,
+            net_nonlin,
+            net_nonlin_kwargs,
+            True,
+            False,
+            lambda x: x,
+            InitWeights_He(0),
+            self.net_num_pool_op_kernel_sizes,
+            self.net_conv_kernel_sizes,
+            False,
+            True,
+            True,
+            seg_output_use_bias=True,
+        )
         if torch.cuda.is_available():
             self.network.cuda()
         self.network.inference_apply_nonlin = softmax_helper

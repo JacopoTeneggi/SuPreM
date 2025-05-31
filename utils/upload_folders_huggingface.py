@@ -1,20 +1,25 @@
-'''
+"""
 python upload_folders_huggingface.py
-'''
+"""
 
 from huggingface_hub import notebook_login
+
 notebook_login()
 
-import torch
-import huggingface_hub
 from pathlib import Path
-from huggingface_hub import HfApi, CommitOperationAdd
+
+import huggingface_hub
+import torch
+from huggingface_hub import CommitOperationAdd, HfApi
 
 # Base folder path on your computer
-base_folder = Path("/data2/wenxuan/Project/BagofTricks/SuPreM/direct_inference/AbdomenAtlasDemo") # /path/to/the/folder
+base_folder = Path(
+    "/data2/wenxuan/Project/BagofTricks/SuPreM/direct_inference/AbdomenAtlasDemo"
+)  # /path/to/the/folder
 repository = "wenxuanchelsea/testAbdomenAtlas"  # Hugging face repository
 repository_type = "dataset"  # can be dataset, model, or space
 n = 1000  # number of files per commit
+
 
 def get_all_files(root: Path):
     dirs = [root]
@@ -25,6 +30,7 @@ def get_all_files(root: Path):
                 yield candidate
             elif candidate.is_dir():
                 dirs.append(candidate)
+
 
 def get_groups_of_n(n: int, iterator):
     assert n > 1
@@ -37,10 +43,11 @@ def get_groups_of_n(n: int, iterator):
     if buffer:
         yield buffer
 
+
 api = HfApi()
 
 try:
-    counter = torch.load('counter.pt')
+    counter = torch.load("counter.pt")
 except FileNotFoundError:
     counter = 0
 
@@ -49,14 +56,16 @@ for i, file_paths in enumerate(get_groups_of_n(n, get_all_files(base_folder))):
         continue
     print(f"Committing {i}")
     operations = [
-        CommitOperationAdd(path_in_repo=str(file_path.relative_to(base_folder)),
-                           path_or_fileobj=str(file_path))
+        CommitOperationAdd(
+            path_in_repo=str(file_path.relative_to(base_folder)),
+            path_or_fileobj=str(file_path),
+        )
         for file_path in file_paths
     ]
     api.create_commit(
         repo_id=repository,
         operations=operations,
         commit_message=f"Upload part {i}",
-        repo_type=repository_type
+        repo_type=repository_type,
     )
-    torch.save(i, 'counter.pt')
+    torch.save(i, "counter.pt")

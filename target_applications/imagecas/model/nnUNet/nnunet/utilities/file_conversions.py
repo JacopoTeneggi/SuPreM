@@ -1,11 +1,18 @@
-from typing import Tuple, List
-from skimage import io
-import SimpleITK as sitk
+from typing import List, Tuple
+
 import numpy as np
+import SimpleITK as sitk
 import tifffile
+from skimage import io
 
 
-def convert_2d_image_to_nifti(filename: str, output_name: str, spacing=(999, 1, 1), transform=None, is_seg: bool = False) -> None:
+def convert_2d_image_to_nifti(
+    filename: str,
+    output_name: str,
+    spacing=(999, 1, 1),
+    transform=None,
+    is_seg: bool = False,
+) -> None:
     """
     Reads an image (must be a format that it recognized by skimage.io.imread) and converts it into a series of niftis.
     The image can have an arbitrary number of input channels which will be exported separately (_0000.nii.gz,
@@ -34,7 +41,11 @@ def convert_2d_image_to_nifti(filename: str, output_name: str, spacing=(999, 1, 
     if len(img.shape) == 2:  # 2d image with no color channels
         img = img[None, None]  # add dimensions
     else:
-        assert len(img.shape) == 3, "image should be 3d with color channel last but has shape %s" % str(img.shape)
+        assert (
+            len(img.shape) == 3
+        ), "image should be 3d with color channel last but has shape %s" % str(
+            img.shape
+        )
         # we assume that the color channel is the last dimension. Transpose it to be in first
         img = img.transpose((2, 0, 1))
         # add third dimension
@@ -42,7 +53,9 @@ def convert_2d_image_to_nifti(filename: str, output_name: str, spacing=(999, 1, 
 
     # image is now (c, x, x, z) where x=1 since it's 2d
     if is_seg:
-        assert img.shape[0] == 1, 'segmentations can only have one color channel, not sure what happened here'
+        assert (
+            img.shape[0] == 1
+        ), "segmentations can only have one color channel, not sure what happened here"
 
     for j, i in enumerate(img):
         itk_img = sitk.GetImageFromArray(i)
@@ -53,7 +66,13 @@ def convert_2d_image_to_nifti(filename: str, output_name: str, spacing=(999, 1, 
             sitk.WriteImage(itk_img, output_name + ".nii.gz")
 
 
-def convert_3d_tiff_to_nifti(filenames: List[str], output_name: str, spacing: Tuple[tuple, list], transform=None, is_seg=False) -> None:
+def convert_3d_tiff_to_nifti(
+    filenames: List[str],
+    output_name: str,
+    spacing: Tuple[tuple, list],
+    transform=None,
+    is_seg=False,
+) -> None:
     """
     filenames must be a list of strings, each pointing to a separate 3d tiff file. One file per modality. If your data
     only has one imaging modality, simply pass a list with only a single entry
@@ -89,7 +108,9 @@ def convert_3d_tiff_to_nifti(filenames: List[str], output_name: str, spacing: Tu
             sitk.WriteImage(itk_img, output_name + ".nii.gz")
 
 
-def convert_2d_segmentation_nifti_to_img(nifti_file: str, output_filename: str, transform=None, export_dtype=np.uint8):
+def convert_2d_segmentation_nifti_to_img(
+    nifti_file: str, output_filename: str, transform=None, export_dtype=np.uint8
+):
     img = sitk.GetArrayFromImage(sitk.ReadImage(nifti_file))
     assert img.shape[0] == 1, "This function can only export 2D segmentations!"
     img = img[0]
@@ -99,7 +120,9 @@ def convert_2d_segmentation_nifti_to_img(nifti_file: str, output_filename: str, 
     io.imsave(output_filename, img.astype(export_dtype), check_contrast=False)
 
 
-def convert_3d_segmentation_nifti_to_tiff(nifti_file: str, output_filename: str, transform=None, export_dtype=np.uint8):
+def convert_3d_segmentation_nifti_to_tiff(
+    nifti_file: str, output_filename: str, transform=None, export_dtype=np.uint8
+):
     img = sitk.GetArrayFromImage(sitk.ReadImage(nifti_file))
     assert len(img.shape) == 3, "This function can only export 3D segmentations!"
     if transform is not None:

@@ -13,13 +13,13 @@
 #    limitations under the License.
 
 
-import numpy as np
+import shutil
 from collections import OrderedDict
 
+import numpy as np
+import SimpleITK as sitk
 from batchgenerators.utilities.file_and_folder_operations import *
 from nnunet.paths import nnUNet_raw_data
-import SimpleITK as sitk
-import shutil
 
 
 def copy_BraTS_segmentation_and_convert_labels(in_file, out_file):
@@ -31,7 +31,7 @@ def copy_BraTS_segmentation_and_convert_labels(in_file, out_file):
     uniques = np.unique(img_npy)
     for u in uniques:
         if u not in [0, 1, 2, 4]:
-            raise RuntimeError('unexpected label')
+            raise RuntimeError("unexpected label")
 
     seg_new = np.zeros_like(img_npy)
     seg_new[img_npy == 4] = 3
@@ -48,7 +48,9 @@ if __name__ == "__main__":
     """
 
     task_name = "Task043_BraTS2019"
-    downloaded_data_dir = "/home/sdp/MLPERF/Brats2019_DATA/MICCAI_BraTS_2019_Data_Training"
+    downloaded_data_dir = (
+        "/home/sdp/MLPERF/Brats2019_DATA/MICCAI_BraTS_2019_Data_Training"
+    )
 
     target_base = join(nnUNet_raw_data, task_name)
     target_imagesTr = join(target_base, "imagesTr")
@@ -74,50 +76,46 @@ if __name__ == "__main__":
             flair = join(patdir, p + "_flair.nii.gz")
             seg = join(patdir, p + "_seg.nii.gz")
 
-            assert all([
-                isfile(t1),
-                isfile(t1c),
-                isfile(t2),
-                isfile(flair),
-                isfile(seg)
-            ]), "%s" % patient_name
+            assert all(
+                [isfile(t1), isfile(t1c), isfile(t2), isfile(flair), isfile(seg)]
+            ), "%s" % patient_name
 
             shutil.copy(t1, join(target_imagesTr, patient_name + "_0000.nii.gz"))
             shutil.copy(t1c, join(target_imagesTr, patient_name + "_0001.nii.gz"))
             shutil.copy(t2, join(target_imagesTr, patient_name + "_0002.nii.gz"))
             shutil.copy(flair, join(target_imagesTr, patient_name + "_0003.nii.gz"))
 
-            copy_BraTS_segmentation_and_convert_labels(seg, join(target_labelsTr, patient_name + ".nii.gz"))
-
+            copy_BraTS_segmentation_and_convert_labels(
+                seg, join(target_labelsTr, patient_name + ".nii.gz")
+            )
 
     json_dict = OrderedDict()
-    json_dict['name'] = "BraTS2019"
-    json_dict['description'] = "nothing"
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = "see BraTS2019"
-    json_dict['licence'] = "see BraTS2019 license"
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
-        "0": "T1",
-        "1": "T1ce",
-        "2": "T2",
-        "3": "FLAIR"
-    }
-    json_dict['labels'] = {
+    json_dict["name"] = "BraTS2019"
+    json_dict["description"] = "nothing"
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = "see BraTS2019"
+    json_dict["licence"] = "see BraTS2019 license"
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {"0": "T1", "1": "T1ce", "2": "T2", "3": "FLAIR"}
+    json_dict["labels"] = {
         "0": "background",
         "1": "edema",
         "2": "non-enhancing",
         "3": "enhancing",
     }
-    json_dict['numTraining'] = len(patient_names)
-    json_dict['numTest'] = 0
-    json_dict['training'] = [{'image': "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i} for i in
-                             patient_names]
-    json_dict['test'] = []
+    json_dict["numTraining"] = len(patient_names)
+    json_dict["numTest"] = 0
+    json_dict["training"] = [
+        {"image": "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i}
+        for i in patient_names
+    ]
+    json_dict["test"] = []
 
     save_json(json_dict, join(target_base, "dataset.json"))
 
-    downloaded_data_dir = "/home/sdp/MLPERF/Brats2019_DATA/MICCAI_BraTS_2019_Data_Validation"
+    downloaded_data_dir = (
+        "/home/sdp/MLPERF/Brats2019_DATA/MICCAI_BraTS_2019_Data_Validation"
+    )
 
     for p in subdirs(downloaded_data_dir, join=False):
         patdir = join(downloaded_data_dir, p)
@@ -127,12 +125,9 @@ if __name__ == "__main__":
         t2 = join(patdir, p + "_t2.nii.gz")
         flair = join(patdir, p + "_flair.nii.gz")
 
-        assert all([
-            isfile(t1),
-            isfile(t1c),
-            isfile(t2),
-            isfile(flair),
-        ]), "%s" % patient_name
+        assert all([isfile(t1), isfile(t1c), isfile(t2), isfile(flair),]), (
+            "%s" % patient_name
+        )
 
         shutil.copy(t1, join(target_imagesVal, patient_name + "_0000.nii.gz"))
         shutil.copy(t1c, join(target_imagesVal, patient_name + "_0001.nii.gz"))

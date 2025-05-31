@@ -13,9 +13,9 @@
 #    limitations under the License.
 
 
+import matplotlib.pyplot as plt
 from nnunet.training.learning_rate.poly_lr import poly_lr
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
-import matplotlib.pyplot as plt
 
 
 def cycle_lr(current_epoch, cycle_length=100, min_lr=1e-6, max_lr=1e-3):
@@ -42,10 +42,30 @@ class nnUNetTrainerV2_cycleAtEnd(nnUNetTrainerV2):
     after 1000 epoch, run one iteration through the cycle lr schedule. I want to see if the train loss starts
     increasing again
     """
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
+
+    def __init__(
+        self,
+        plans_file,
+        fold,
+        output_folder=None,
+        dataset_directory=None,
+        batch_dice=True,
+        stage=None,
+        unpack_data=True,
+        deterministic=True,
+        fp16=False,
+    ):
+        super().__init__(
+            plans_file,
+            fold,
+            output_folder,
+            dataset_directory,
+            batch_dice,
+            stage,
+            unpack_data,
+            deterministic,
+            fp16,
+        )
         self.max_num_epochs = 1100
 
     def maybe_update_lr(self, epoch=None):
@@ -55,11 +75,15 @@ class nnUNetTrainerV2_cycleAtEnd(nnUNetTrainerV2):
             ep = epoch
 
         if ep < 1000:
-            self.optimizer.param_groups[0]['lr'] = poly_lr(ep, 1000, self.initial_lr, 0.9)
+            self.optimizer.param_groups[0]["lr"] = poly_lr(
+                ep, 1000, self.initial_lr, 0.9
+            )
             self.print_to_log_file("lr:", poly_lr(ep, 1000, self.initial_lr, 0.9))
         else:
-            new_lr = cycle_lr(ep, 100, min_lr=1e-6, max_lr=1e-3) # we don't go all the way back up to initial lr
-            self.optimizer.param_groups[0]['lr'] = new_lr
+            new_lr = cycle_lr(
+                ep, 100, min_lr=1e-6, max_lr=1e-3
+            )  # we don't go all the way back up to initial lr
+            self.optimizer.param_groups[0]["lr"] = new_lr
             self.print_to_log_file("lr:", new_lr)
 
 
@@ -68,10 +92,30 @@ class nnUNetTrainerV2_cycleAtEnd2(nnUNetTrainerV2):
     after 1000 epoch, run one iteration through the cycle lr schedule. I want to see if the train loss starts
     increasing again
     """
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
+
+    def __init__(
+        self,
+        plans_file,
+        fold,
+        output_folder=None,
+        dataset_directory=None,
+        batch_dice=True,
+        stage=None,
+        unpack_data=True,
+        deterministic=True,
+        fp16=False,
+    ):
+        super().__init__(
+            plans_file,
+            fold,
+            output_folder,
+            dataset_directory,
+            batch_dice,
+            stage,
+            unpack_data,
+            deterministic,
+            fp16,
+        )
         self.max_num_epochs = 1200
 
     def maybe_update_lr(self, epoch=None):
@@ -81,9 +125,13 @@ class nnUNetTrainerV2_cycleAtEnd2(nnUNetTrainerV2):
             ep = epoch
 
         if ep < 1000:
-            self.optimizer.param_groups[0]['lr'] = poly_lr(ep, 1000, self.initial_lr, 0.9)
+            self.optimizer.param_groups[0]["lr"] = poly_lr(
+                ep, 1000, self.initial_lr, 0.9
+            )
             self.print_to_log_file("lr:", poly_lr(ep, 1000, self.initial_lr, 0.9))
         else:
-            new_lr = cycle_lr(ep, 200, min_lr=1e-6, max_lr=1e-2) # we don't go all the way back up to initial lr
-            self.optimizer.param_groups[0]['lr'] = new_lr
+            new_lr = cycle_lr(
+                ep, 200, min_lr=1e-6, max_lr=1e-2
+            )  # we don't go all the way back up to initial lr
+            self.optimizer.param_groups[0]["lr"] = new_lr
             self.print_to_log_file("lr:", new_lr)

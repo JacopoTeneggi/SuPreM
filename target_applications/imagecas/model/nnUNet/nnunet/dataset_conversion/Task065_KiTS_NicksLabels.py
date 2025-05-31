@@ -21,7 +21,7 @@ from nnunet.paths import nnUNet_raw_data
 if __name__ == "__main__":
     """
     Nick asked me to rerun the training with other labels (the Kidney region is defined differently).
-    
+
     These labels operate in interpolated spacing. I don't like that but that's how it is
     """
 
@@ -63,25 +63,28 @@ if __name__ == "__main__":
         test_patient_names.append(p)
 
     json_dict = {}
-    json_dict['name'] = "KiTS"
-    json_dict['description'] = "kidney and kidney tumor segmentation"
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = "KiTS data for nnunet"
-    json_dict['licence'] = ""
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
+    json_dict["name"] = "KiTS"
+    json_dict["description"] = "kidney and kidney tumor segmentation"
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = "KiTS data for nnunet"
+    json_dict["licence"] = ""
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {
         "0": "CT",
     }
-    json_dict['labels'] = {
-        "0": "background",
-        "1": "Kidney",
-        "2": "Tumor"
-    }
+    json_dict["labels"] = {"0": "background", "1": "Kidney", "2": "Tumor"}
 
-    json_dict['numTraining'] = len(train_patient_names)
-    json_dict['numTest'] = len(test_patient_names)
-    json_dict['training'] = [{'image': "./imagesTr/%s.nii.gz" % i.split("/")[-1], "label": "./labelsTr/%s.nii.gz" % i.split("/")[-1]} for i in
-                             train_patient_names]
-    json_dict['test'] = ["./imagesTs/%s.nii.gz" % i.split("/")[-1] for i in test_patient_names]
+    json_dict["numTraining"] = len(train_patient_names)
+    json_dict["numTest"] = len(test_patient_names)
+    json_dict["training"] = [
+        {
+            "image": "./imagesTr/%s.nii.gz" % i.split("/")[-1],
+            "label": "./labelsTr/%s.nii.gz" % i.split("/")[-1],
+        }
+        for i in train_patient_names
+    ]
+    json_dict["test"] = [
+        "./imagesTs/%s.nii.gz" % i.split("/")[-1] for i in test_patient_names
+    ]
 
     save_json(json_dict, os.path.join(out_base, "dataset.json"))

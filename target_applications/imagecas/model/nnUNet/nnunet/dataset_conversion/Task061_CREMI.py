@@ -13,13 +13,13 @@
 #    limitations under the License.
 
 
+import shutil
 from collections import OrderedDict
 
-from batchgenerators.utilities.file_and_folder_operations import *
 import numpy as np
-from nnunet.paths import nnUNet_raw_data, preprocessing_output_dir
-import shutil
 import SimpleITK as sitk
+from batchgenerators.utilities.file_and_folder_operations import *
+from nnunet.paths import nnUNet_raw_data, preprocessing_output_dir
 
 try:
     import h5py
@@ -29,11 +29,11 @@ except ImportError:
 
 def load_sample(filename):
     # we need raw data and seg
-    f = h5py.File(filename, 'r')
-    data = np.array(f['volumes']['raw'])
+    f = h5py.File(filename, "r")
+    data = np.array(f["volumes"]["raw"])
 
-    if 'labels' in f['volumes'].keys():
-        labels = np.array(f['volumes']['labels']['clefts'])
+    if "labels" in f["volumes"].keys():
+        labels = np.array(f["volumes"]["labels"]["clefts"])
         # clefts are low values, background is high
         labels = (labels < 100000).astype(np.uint8)
     else:
@@ -53,24 +53,30 @@ def prepare_submission():
 
     base = "/home/fabian/drives/datasets/results/nnUNet/test_sets/Task061_CREMI/"
     # a+
-    pred = sitk.GetArrayFromImage(sitk.ReadImage(join(base, 'results_3d_fullres', "sample_a+.nii.gz"))).astype(np.uint64)
-    pred[pred == 0] = 0xffffffffffffffff
-    out_a = CremiFile(join(base, 'sample_A+_20160601.hdf'), 'w')
-    clefts = Volume(pred, (40., 4., 4.))
+    pred = sitk.GetArrayFromImage(
+        sitk.ReadImage(join(base, "results_3d_fullres", "sample_a+.nii.gz"))
+    ).astype(np.uint64)
+    pred[pred == 0] = 0xFFFFFFFFFFFFFFFF
+    out_a = CremiFile(join(base, "sample_A+_20160601.hdf"), "w")
+    clefts = Volume(pred, (40.0, 4.0, 4.0))
     out_a.write_clefts(clefts)
     out_a.close()
 
-    pred = sitk.GetArrayFromImage(sitk.ReadImage(join(base, 'results_3d_fullres', "sample_b+.nii.gz"))).astype(np.uint64)
-    pred[pred == 0] = 0xffffffffffffffff
-    out_b = CremiFile(join(base, 'sample_B+_20160601.hdf'), 'w')
-    clefts = Volume(pred, (40., 4., 4.))
+    pred = sitk.GetArrayFromImage(
+        sitk.ReadImage(join(base, "results_3d_fullres", "sample_b+.nii.gz"))
+    ).astype(np.uint64)
+    pred[pred == 0] = 0xFFFFFFFFFFFFFFFF
+    out_b = CremiFile(join(base, "sample_B+_20160601.hdf"), "w")
+    clefts = Volume(pred, (40.0, 4.0, 4.0))
     out_b.write_clefts(clefts)
     out_b.close()
 
-    pred = sitk.GetArrayFromImage(sitk.ReadImage(join(base, 'results_3d_fullres', "sample_c+.nii.gz"))).astype(np.uint64)
-    pred[pred == 0] = 0xffffffffffffffff
-    out_c = CremiFile(join(base, 'sample_C+_20160601.hdf'), 'w')
-    clefts = Volume(pred, (40., 4., 4.))
+    pred = sitk.GetArrayFromImage(
+        sitk.ReadImage(join(base, "results_3d_fullres", "sample_c+.nii.gz"))
+    ).astype(np.uint64)
+    pred[pred == 0] = 0xFFFFFFFFFFFFFFFF
+    out_c = CremiFile(join(base, "sample_C+_20160601.hdf"), "w")
+    clefts = Volume(pred, (40.0, 4.0, 4.0))
     out_c.write_clefts(clefts)
     out_c.close()
 
@@ -115,32 +121,58 @@ if __name__ == "__main__":
     save_as_nifti(img, join(imagests, "sample_c+_0000.nii.gz"), (4, 4, 40))
 
     json_dict = OrderedDict()
-    json_dict['name'] = foldername
-    json_dict['description'] = foldername
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = "see challenge website"
-    json_dict['licence'] = "see challenge website"
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
+    json_dict["name"] = foldername
+    json_dict["description"] = foldername
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = "see challenge website"
+    json_dict["licence"] = "see challenge website"
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {
         "0": "EM",
     }
-    json_dict['labels'] = {i: str(i) for i in range(2)}
+    json_dict["labels"] = {i: str(i) for i in range(2)}
 
-    json_dict['numTraining'] = 5
-    json_dict['numTest'] = 1
-    json_dict['training'] = [{'image': "./imagesTr/sample_%s.nii.gz" % i, "label": "./labelsTr/sample_%s.nii.gz" % i} for i in
-                             ['a', 'b', 'c', 'd', 'e']]
+    json_dict["numTraining"] = 5
+    json_dict["numTest"] = 1
+    json_dict["training"] = [
+        {
+            "image": "./imagesTr/sample_%s.nii.gz" % i,
+            "label": "./labelsTr/sample_%s.nii.gz" % i,
+        }
+        for i in ["a", "b", "c", "d", "e"]
+    ]
 
-    json_dict['test'] = ["./imagesTs/sample_a+.nii.gz", "./imagesTs/sample_b+.nii.gz", "./imagesTs/sample_c+.nii.gz"]
+    json_dict["test"] = [
+        "./imagesTs/sample_a+.nii.gz",
+        "./imagesTs/sample_b+.nii.gz",
+        "./imagesTs/sample_c+.nii.gz",
+    ]
 
     save_json(json_dict, os.path.join(out_base, "dataset.json"))
 
     out_preprocessed = join(preprocessing_output_dir, foldername)
     maybe_mkdir_p(out_preprocessed)
     # manual splits. we train 5 models on all three datasets
-    splits = [{'train': ["sample_a", "sample_b", "sample_c"], 'val': ["sample_a", "sample_b", "sample_c"]},
-              {'train': ["sample_a", "sample_b", "sample_c"], 'val': ["sample_a", "sample_b", "sample_c"]},
-              {'train': ["sample_a", "sample_b", "sample_c"], 'val': ["sample_a", "sample_b", "sample_c"]},
-              {'train': ["sample_a", "sample_b", "sample_c"], 'val': ["sample_a", "sample_b", "sample_c"]},
-              {'train': ["sample_a", "sample_b", "sample_c"], 'val': ["sample_a", "sample_b", "sample_c"]}]
+    splits = [
+        {
+            "train": ["sample_a", "sample_b", "sample_c"],
+            "val": ["sample_a", "sample_b", "sample_c"],
+        },
+        {
+            "train": ["sample_a", "sample_b", "sample_c"],
+            "val": ["sample_a", "sample_b", "sample_c"],
+        },
+        {
+            "train": ["sample_a", "sample_b", "sample_c"],
+            "val": ["sample_a", "sample_b", "sample_c"],
+        },
+        {
+            "train": ["sample_a", "sample_b", "sample_c"],
+            "val": ["sample_a", "sample_b", "sample_c"],
+        },
+        {
+            "train": ["sample_a", "sample_b", "sample_c"],
+            "val": ["sample_a", "sample_b", "sample_c"],
+        },
+    ]
     save_pickle(splits, join(out_preprocessed, "splits_final.pkl"))

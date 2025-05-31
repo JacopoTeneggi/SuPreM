@@ -16,13 +16,14 @@ from collections.abc import Sequence
 
 import torch
 import torch.nn as nn
-
 from monai.networks.blocks.convolutions import Convolution, ResidualUnit
 from monai.networks.layers.factories import Act, Norm
 from monai.networks.layers.simplelayers import SkipConnection
 from monai.utils import alias, export
 
 __all__ = ["UNet", "Unet"]
+
+
 @export("monai.networks.nets")
 @alias("Unet")
 class UNet(nn.Module):
@@ -126,13 +127,22 @@ class UNet(nn.Module):
             raise ValueError("the length of `channels` should be no less than 2.")
         delta = len(strides) - (len(channels) - 1)
         if delta < 0:
-            raise ValueError("the length of `strides` should equal to `len(channels) - 1`.")
+            raise ValueError(
+                "the length of `strides` should equal to `len(channels) - 1`."
+            )
         if delta > 0:
-            warnings.warn(f"`len(strides) > len(channels) - 1`, the last {delta} values of strides will not be used.")
+            warnings.warn(
+                f"`len(strides) > len(channels) - 1`, the last {delta} values of"
+                " strides will not be used."
+            )
         if isinstance(kernel_size, Sequence) and len(kernel_size) != spatial_dims:
-            raise ValueError("the length of `kernel_size` should equal to `dimensions`.")
+            raise ValueError(
+                "the length of `kernel_size` should equal to `dimensions`."
+            )
         if isinstance(up_kernel_size, Sequence) and len(up_kernel_size) != spatial_dims:
-            raise ValueError("the length of `up_kernel_size` should equal to `dimensions`.")
+            raise ValueError(
+                "the length of `up_kernel_size` should equal to `dimensions`."
+            )
 
         self.dimensions = spatial_dims
         self.in_channels = in_channels
@@ -149,7 +159,11 @@ class UNet(nn.Module):
         self.adn_ordering = adn_ordering
 
         def _create_block(
-            inc: int, outc: int, channels: Sequence[int], strides: Sequence[int], is_top: bool
+            inc: int,
+            outc: int,
+            channels: Sequence[int],
+            strides: Sequence[int],
+            is_top: bool,
         ) -> nn.Module:
             """
             Builds the UNet structure from the bottom up by recursing down to the bottom block, then creating sequential
@@ -168,21 +182,31 @@ class UNet(nn.Module):
             subblock: nn.Module
 
             if len(channels) > 2:
-                subblock = _create_block(c, c, channels[1:], strides[1:], False)  # continue recursion down
+                subblock = _create_block(
+                    c, c, channels[1:], strides[1:], False
+                )  # continue recursion down
                 upc = c * 2
             else:
                 # the next layer is the bottom so stop recursion, create the bottom layer as the sublock for this layer
                 subblock = self._get_bottom_layer(c, channels[1])
                 upc = c + channels[1]
 
-            down = self._get_down_layer(inc, c, s, is_top)  # create layer in downsampling path
-            up = self._get_up_layer(upc, outc, s, is_top)  # create layer in upsampling path
+            down = self._get_down_layer(
+                inc, c, s, is_top
+            )  # create layer in downsampling path
+            up = self._get_up_layer(
+                upc, outc, s, is_top
+            )  # create layer in upsampling path
 
             return self._get_connection_block(down, up, subblock)
 
-        self.model = _create_block(in_channels, out_channels, self.channels, self.strides, True)
+        self.model = _create_block(
+            in_channels, out_channels, self.channels, self.strides, True
+        )
 
-    def _get_connection_block(self, down_path: nn.Module, up_path: nn.Module, subblock: nn.Module) -> nn.Module:
+    def _get_connection_block(
+        self, down_path: nn.Module, up_path: nn.Module, subblock: nn.Module
+    ) -> nn.Module:
         """
         Returns the block object defining a layer of the UNet structure including the implementation of the skip
         between encoding (down) and decoding (up) sides of the network.
@@ -195,7 +219,9 @@ class UNet(nn.Module):
         """
         return nn.Sequential(down_path, SkipConnection(subblock), up_path)
 
-    def _get_down_layer(self, in_channels: int, out_channels: int, strides: int, is_top: bool) -> nn.Module:
+    def _get_down_layer(
+        self, in_channels: int, out_channels: int, strides: int, is_top: bool
+    ) -> nn.Module:
         """
         Returns the encoding (down) part of a layer of the network. This typically will downsample data at some point
         in its structure. Its output is used as input to the next layer down and is concatenated with output from the
@@ -247,7 +273,9 @@ class UNet(nn.Module):
         """
         return self._get_down_layer(in_channels, out_channels, 1, False)
 
-    def _get_up_layer(self, in_channels: int, out_channels: int, strides: int, is_top: bool) -> nn.Module:
+    def _get_up_layer(
+        self, in_channels: int, out_channels: int, strides: int, is_top: bool
+    ) -> nn.Module:
         """
         Returns the decoding (up) part of a layer of the network. This typically will upsample data at some point
         in its structure. Its output is used as input to the next layer up.
@@ -297,5 +325,6 @@ class UNet(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.model(x)
         return x
-    
+
+
 Unet = UNet

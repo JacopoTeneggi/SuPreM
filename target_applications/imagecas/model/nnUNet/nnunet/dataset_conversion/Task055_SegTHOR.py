@@ -13,11 +13,12 @@
 #    limitations under the License.
 
 
-from collections import OrderedDict
-from nnunet.paths import nnUNet_raw_data
-from batchgenerators.utilities.file_and_folder_operations import *
 import shutil
+from collections import OrderedDict
+
 import SimpleITK as sitk
+from batchgenerators.utilities.file_and_folder_operations import *
+from nnunet.paths import nnUNet_raw_data
 
 
 def convert_for_submission(source_dir, target_dir):
@@ -33,7 +34,6 @@ def convert_for_submission(source_dir, target_dir):
         img = sitk.ReadImage(join(source_dir, f))
         out_file = join(target_dir, f[:-7] + ".nii")
         sitk.WriteImage(img, out_file)
-
 
 
 if __name__ == "__main__":
@@ -71,28 +71,34 @@ if __name__ == "__main__":
         shutil.copy(image_file, join(imagests, p + "_0000.nii.gz"))
         test_patient_names.append(p)
 
-
     json_dict = OrderedDict()
-    json_dict['name'] = "SegTHOR"
-    json_dict['description'] = "SegTHOR"
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = "see challenge website"
-    json_dict['licence'] = "see challenge website"
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
+    json_dict["name"] = "SegTHOR"
+    json_dict["description"] = "SegTHOR"
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = "see challenge website"
+    json_dict["licence"] = "see challenge website"
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {
         "0": "CT",
     }
-    json_dict['labels'] = {
+    json_dict["labels"] = {
         "0": "background",
         "1": "esophagus",
         "2": "heart",
         "3": "trachea",
         "4": "aorta",
     }
-    json_dict['numTraining'] = len(train_patient_names)
-    json_dict['numTest'] = len(test_patient_names)
-    json_dict['training'] = [{'image': "./imagesTr/%s.nii.gz" % i.split("/")[-1], "label": "./labelsTr/%s.nii.gz" % i.split("/")[-1]} for i in
-                             train_patient_names]
-    json_dict['test'] = ["./imagesTs/%s.nii.gz" % i.split("/")[-1] for i in test_patient_names]
+    json_dict["numTraining"] = len(train_patient_names)
+    json_dict["numTest"] = len(test_patient_names)
+    json_dict["training"] = [
+        {
+            "image": "./imagesTr/%s.nii.gz" % i.split("/")[-1],
+            "label": "./labelsTr/%s.nii.gz" % i.split("/")[-1],
+        }
+        for i in train_patient_names
+    ]
+    json_dict["test"] = [
+        "./imagesTs/%s.nii.gz" % i.split("/")[-1] for i in test_patient_names
+    ]
 
     save_json(json_dict, os.path.join(out_base, "dataset.json"))

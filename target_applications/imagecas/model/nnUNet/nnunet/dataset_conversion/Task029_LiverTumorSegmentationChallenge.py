@@ -13,16 +13,17 @@
 #    limitations under the License.
 
 from collections import OrderedDict
+from multiprocessing import Pool
+
+import numpy as np
 import SimpleITK as sitk
 from batchgenerators.utilities.file_and_folder_operations import *
-from multiprocessing import Pool
-import numpy as np
 from nnunet.configuration import default_num_threads
 from scipy.ndimage import label
 
 
 def export_segmentations(indir, outdir):
-    niftis = subfiles(indir, suffix='nii.gz', join=False)
+    niftis = subfiles(indir, suffix="nii.gz", join=False)
     for n in niftis:
         identifier = str(n.split("_")[-1][:-7])
         outfname = join(outdir, "test-segmentation-%s.nii" % identifier)
@@ -32,7 +33,7 @@ def export_segmentations(indir, outdir):
 
 def export_segmentations_postprocess(indir, outdir):
     maybe_mkdir_p(outdir)
-    niftis = subfiles(indir, suffix='nii.gz', join=False)
+    niftis = subfiles(indir, suffix="nii.gz", join=False)
     for n in niftis:
         print("\n", n)
         identifier = str(n.split("_")[-1][:-7])
@@ -55,15 +56,16 @@ if __name__ == "__main__":
     train_dir = "/media/fabian/DeepLearningData/tmp/LITS-Challenge-Train-Data"
     test_dir = "/media/fabian/My Book/datasets/LiTS/test_data"
 
-
-    output_folder = "/media/fabian/My Book/MedicalDecathlon/MedicalDecathlon_raw_splitted/Task029_LITS"
+    output_folder = (
+        "/media/fabian/My"
+        " Book/MedicalDecathlon/MedicalDecathlon_raw_splitted/Task029_LITS"
+    )
     img_dir = join(output_folder, "imagesTr")
     lab_dir = join(output_folder, "labelsTr")
     img_dir_te = join(output_folder, "imagesTs")
     maybe_mkdir_p(img_dir)
     maybe_mkdir_p(lab_dir)
     maybe_mkdir_p(img_dir_te)
-
 
     def load_save_train(args):
         data_file, seg_file = args
@@ -98,26 +100,23 @@ if __name__ == "__main__":
     p.join()
 
     json_dict = OrderedDict()
-    json_dict['name'] = "LITS"
-    json_dict['description'] = "LITS"
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = "see challenge website"
-    json_dict['licence'] = "see challenge website"
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
-        "0": "CT"
-    }
+    json_dict["name"] = "LITS"
+    json_dict["description"] = "LITS"
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = "see challenge website"
+    json_dict["licence"] = "see challenge website"
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {"0": "CT"}
 
-    json_dict['labels'] = {
-        "0": "background",
-        "1": "liver",
-        "2": "tumor"
-    }
+    json_dict["labels"] = {"0": "background", "1": "liver", "2": "tumor"}
 
-    json_dict['numTraining'] = len(train_ids)
-    json_dict['numTest'] = len(test_ids)
-    json_dict['training'] = [{'image': "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i} for i in train_ids]
-    json_dict['test'] = ["./imagesTs/%s.nii.gz" % i for i in test_ids]
+    json_dict["numTraining"] = len(train_ids)
+    json_dict["numTest"] = len(test_ids)
+    json_dict["training"] = [
+        {"image": "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i}
+        for i in train_ids
+    ]
+    json_dict["test"] = ["./imagesTs/%s.nii.gz" % i for i in test_ids]
 
-    with open(os.path.join(output_folder, "dataset.json"), 'w') as f:
+    with open(os.path.join(output_folder, "dataset.json"), "w") as f:
         json.dump(json_dict, f, indent=4, sort_keys=True)

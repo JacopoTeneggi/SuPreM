@@ -13,8 +13,9 @@
 #    limitations under the License.
 
 
-from batchgenerators.utilities.file_and_folder_operations import *
 import os
+
+from batchgenerators.utilities.file_and_folder_operations import *
 
 
 def recursive_rename(folder):
@@ -28,6 +29,7 @@ def recursive_rename(folder):
     for ss in s:
         recursive_rename(ss)
 
+
 if __name__ == "__main__":
     recursive_rename("/media/fabian/Results/nnUNet")
     recursive_rename("/media/fabian/nnunet")
@@ -38,4 +40,3 @@ if __name__ == "__main__":
     recursive_rename("/home/fabian/drives/datasets/results/nnUNet")
     recursive_rename("/home/fabian/drives/e230-dgx2-1-data_fabian/Decathlon_raw")
     recursive_rename("/home/fabian/drives/e230-dgx2-1-data_fabian/nnUNet_preprocessed")
-

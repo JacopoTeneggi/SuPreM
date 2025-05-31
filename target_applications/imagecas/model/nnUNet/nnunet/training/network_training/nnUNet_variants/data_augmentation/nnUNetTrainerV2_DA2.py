@@ -28,4 +28,3 @@ class nnUNetTrainerV2_DA2(nnUNetTrainerV2):
             self.data_aug_params["rotation_p_per_axis"] = 1
 
         self.data_aug_params["do_additive_brightness"] = True
-

@@ -13,17 +13,18 @@
 #    limitations under the License.
 
 from collections import OrderedDict
+from multiprocessing import Pool
+
+import numpy as np
 import SimpleITK as sitk
 from batchgenerators.utilities.file_and_folder_operations import *
-from multiprocessing import Pool
-import numpy as np
 from nnunet.configuration import default_num_threads
 from scipy.ndimage import label
 from sklearn.model_selection import KFold
 
 
 def export_segmentations(indir, outdir):
-    niftis = subfiles(indir, suffix='nii.gz', join=False)
+    niftis = subfiles(indir, suffix="nii.gz", join=False)
     for n in niftis:
         identifier = str(n.split("_")[-1][:-7])
         outfname = join(outdir, "test-segmentation-%s.nii" % identifier)
@@ -33,7 +34,7 @@ def export_segmentations(indir, outdir):
 
 def export_segmentations_postprocess(indir, outdir):
     maybe_mkdir_p(outdir)
-    niftis = subfiles(indir, suffix='nii.gz', join=False)
+    niftis = subfiles(indir, suffix="nii.gz", join=False)
     for n in niftis:
         print("\n", n)
         identifier = str(n.split("_")[-1][:-7])
@@ -56,15 +57,15 @@ if __name__ == "__main__":
     train_dir = "/media/userdisk1/ytxie/BCV-pro/dataset/BCV/RawData/Training"
     test_dir = "/media/userdisk1/ytxie/BCV-pro/dataset/BCV/RawData/Testing"
 
-
-    output_folder = "/media/userdisk1/ytxie/nnU-pro/nnU_data/nnUNet_raw/nnUNet_raw_data/Task017_BCV"
+    output_folder = (
+        "/media/userdisk1/ytxie/nnU-pro/nnU_data/nnUNet_raw/nnUNet_raw_data/Task017_BCV"
+    )
     img_dir = join(output_folder, "imagesTr")
     lab_dir = join(output_folder, "labelsTr")
     img_dir_te = join(output_folder, "imagesTs")
     maybe_mkdir_p(img_dir)
     maybe_mkdir_p(lab_dir)
     maybe_mkdir_p(img_dir_te)
-
 
     def load_save_train(args):
         data_file, seg_file = args
@@ -87,10 +88,10 @@ if __name__ == "__main__":
         sitk.WriteImage(img_itk, join(img_dir_te, pat_id + "_0000.nii.gz"))
         return pat_id
 
-    nii_files_tr_data = subfiles(join(train_dir,'img'), True, "img", "nii.gz", True)
-    nii_files_tr_seg = subfiles(join(train_dir,'label'), True, "label", "nii.gz", True)
+    nii_files_tr_data = subfiles(join(train_dir, "img"), True, "img", "nii.gz", True)
+    nii_files_tr_seg = subfiles(join(train_dir, "label"), True, "label", "nii.gz", True)
 
-    nii_files_ts = subfiles(join(test_dir, 'img'), True, "img", "nii.gz", True)
+    nii_files_ts = subfiles(join(test_dir, "img"), True, "img", "nii.gz", True)
 
     p = Pool(default_num_threads)
     train_ids = p.map(load_save_train, zip(nii_files_tr_data, nii_files_tr_seg))
@@ -99,17 +100,15 @@ if __name__ == "__main__":
     p.join()
 
     json_dict = OrderedDict()
-    json_dict['name'] = "BCV"
-    json_dict['description'] = "BeyondCranialVaultAbodominalOrganSegmentation"
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = "see challenge website"
-    json_dict['licence'] = "see challenge website"
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
-        "0": "CT"
-    }
+    json_dict["name"] = "BCV"
+    json_dict["description"] = "BeyondCranialVaultAbodominalOrganSegmentation"
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = "see challenge website"
+    json_dict["licence"] = "see challenge website"
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {"0": "CT"}
 
-    json_dict['labels'] = {
+    json_dict["labels"] = {
         "0": "background",
         "1": "spleen",
         "2": "kidney_right",
@@ -123,15 +122,18 @@ if __name__ == "__main__":
         "10": "pvsv",
         "11": "pancreas",
         "12": "adrenal_gland_right",
-        "13": "adrenal_gland_left"
+        "13": "adrenal_gland_left",
     }
 
-    json_dict['numTraining'] = len(train_ids)
-    json_dict['numTest'] = len(test_ids)
-    json_dict['training'] = [{'image': "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i} for i in train_ids]
-    json_dict['test'] = ["./imagesTs/%s.nii.gz" % i for i in test_ids]
+    json_dict["numTraining"] = len(train_ids)
+    json_dict["numTest"] = len(test_ids)
+    json_dict["training"] = [
+        {"image": "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i}
+        for i in train_ids
+    ]
+    json_dict["test"] = ["./imagesTs/%s.nii.gz" % i for i in test_ids]
 
-    with open(os.path.join(output_folder, "dataset.json"), 'w') as f:
+    with open(os.path.join(output_folder, "dataset.json"), "w") as f:
         json.dump(json_dict, f, indent=4, sort_keys=True)
 
     # create a dummy split (patients need to be separated)
@@ -139,7 +141,7 @@ if __name__ == "__main__":
     patients = np.unique([i[:10] for i in train_ids])
     patientids = [i[4:] for i in train_ids]
     splits.append(OrderedDict())
-    splits[-1]['train'] = [i for i in train_ids if int(i[4:]) <32]
-    splits[-1]['val'] = [i for i in train_ids if int(i[4:]) >= 32]
+    splits[-1]["train"] = [i for i in train_ids if int(i[4:]) < 32]
+    splits[-1]["val"] = [i for i in train_ids if int(i[4:]) >= 32]
 
     save_pickle(splits, join(output_folder, "splits_final.pkl"))

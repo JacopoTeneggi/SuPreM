@@ -15,19 +15,18 @@
 import shutil
 from multiprocessing import Pool
 
-import SimpleITK as sitk
 import numpy as np
+import SimpleITK as sitk
 from batchgenerators.utilities.file_and_folder_operations import *
-from skimage.io import imread
-from skimage.io import imsave
-from skimage.morphology import disk
-from skimage.morphology import erosion
+from nnunet.paths import nnUNet_raw_data
+from skimage.io import imread, imsave
+from skimage.morphology import disk, erosion
 from skimage.transform import resize
 
-from nnunet.paths import nnUNet_raw_data
 
-
-def load_bmp_convert_to_nifti_borders_2d(img_file, lab_file, img_out_base, anno_out, spacing, border_thickness=0.7):
+def load_bmp_convert_to_nifti_borders_2d(
+    img_file, lab_file, img_out_base, anno_out, spacing, border_thickness=0.7
+):
     img = imread(img_file)
     img_itk = sitk.GetImageFromArray(img.astype(np.float32)[None])
     img_itk.SetSpacing(list(spacing)[::-1] + [999])
@@ -35,7 +34,9 @@ def load_bmp_convert_to_nifti_borders_2d(img_file, lab_file, img_out_base, anno_
 
     if lab_file is not None:
         l = imread(lab_file)
-        borders = generate_border_as_suggested_by_twollmann_2d(l, spacing, border_thickness)
+        borders = generate_border_as_suggested_by_twollmann_2d(
+            l, spacing, border_thickness
+        )
         l[l > 0] = 1
         l[borders == 1] = 2
         l_itk = sitk.GetImageFromArray(l.astype(np.uint8)[None])
@@ -47,18 +48,29 @@ def generate_disk(spacing, radius, dtype=int):
     radius_in_voxels = np.round(radius / np.array(spacing)).astype(int)
     n = 2 * radius_in_voxels + 1
     disk_iso = disk(max(n) * 2, dtype=np.float64)
-    disk_resampled = resize(disk_iso, n, 1, 'constant', 0, clip=True, anti_aliasing=False, preserve_range=True)
+    disk_resampled = resize(
+        disk_iso,
+        n,
+        1,
+        "constant",
+        0,
+        clip=True,
+        anti_aliasing=False,
+        preserve_range=True,
+    )
     disk_resampled[disk_resampled > 0.5] = 1
     disk_resampled[disk_resampled <= 0.5] = 0
     return disk_resampled.astype(dtype)
 
 
-def generate_border_as_suggested_by_twollmann_2d(label_img: np.ndarray, spacing,
-                                                 border_thickness: float = 2) -> np.ndarray:
+def generate_border_as_suggested_by_twollmann_2d(
+    label_img: np.ndarray, spacing, border_thickness: float = 2
+) -> np.ndarray:
     border = np.zeros_like(label_img)
     selem = generate_disk(spacing, border_thickness)
     for l in np.unique(label_img):
-        if l == 0: continue
+        if l == 0:
+            continue
         mask = (label_img == l).astype(int)
         eroded = erosion(mask, selem)
         border[(eroded == 0) & (mask != 0)] = 1
@@ -82,66 +94,106 @@ def prepare_task(base, task_id, task_name, spacing, border_thickness: float = 15
     test_patient_names = []
     res = []
 
-    for train_sequence in [i for i in subfolders(base + "_train", join=False) if not i.endswith("_GT")]:
-        train_cases = subfiles(join(base + '_train', train_sequence), suffix=".tif", join=False)
+    for train_sequence in [
+        i for i in subfolders(base + "_train", join=False) if not i.endswith("_GT")
+    ]:
+        train_cases = subfiles(
+            join(base + "_train", train_sequence), suffix=".tif", join=False
+        )
         for t in train_cases:
             casename = train_sequence + "_" + t[:-4]
-            img_file = join(base + '_train', train_sequence, t)
-            lab_file = join(base + '_train', train_sequence + "_GT", "SEG", "man_seg" + t[1:])
+            img_file = join(base + "_train", train_sequence, t)
+            lab_file = join(
+                base + "_train", train_sequence + "_GT", "SEG", "man_seg" + t[1:]
+            )
             if not isfile(lab_file):
                 continue
             img_out_base = join(imagestr, casename)
             anno_out = join(labelstr, casename + ".nii.gz")
             res.append(
-                p.starmap_async(load_bmp_convert_to_nifti_borders_2d,
-                                ((img_file, lab_file, img_out_base, anno_out, spacing, border_thickness),)))
+                p.starmap_async(
+                    load_bmp_convert_to_nifti_borders_2d,
+                    (
+                        (
+                            img_file,
+                            lab_file,
+                            img_out_base,
+                            anno_out,
+                            spacing,
+                            border_thickness,
+                        ),
+                    ),
+                )
+            )
             train_patient_names.append(casename)
 
-    for test_sequence in [i for i in subfolders(base + "_test", join=False) if not i.endswith("_GT")]:
-        test_cases = subfiles(join(base + '_test', test_sequence), suffix=".tif", join=False)
+    for test_sequence in [
+        i for i in subfolders(base + "_test", join=False) if not i.endswith("_GT")
+    ]:
+        test_cases = subfiles(
+            join(base + "_test", test_sequence), suffix=".tif", join=False
+        )
         for t in test_cases:
             casename = test_sequence + "_" + t[:-4]
-            img_file = join(base + '_test', test_sequence, t)
+            img_file = join(base + "_test", test_sequence, t)
             lab_file = None
             img_out_base = join(imagests, casename)
             anno_out = None
             res.append(
-                p.starmap_async(load_bmp_convert_to_nifti_borders_2d,
-                                ((img_file, lab_file, img_out_base, anno_out, spacing, border_thickness),)))
+                p.starmap_async(
+                    load_bmp_convert_to_nifti_borders_2d,
+                    (
+                        (
+                            img_file,
+                            lab_file,
+                            img_out_base,
+                            anno_out,
+                            spacing,
+                            border_thickness,
+                        ),
+                    ),
+                )
+            )
             test_patient_names.append(casename)
 
     _ = [i.get() for i in res]
 
     json_dict = {}
-    json_dict['name'] = task_name
-    json_dict['description'] = ""
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = ""
-    json_dict['licence'] = ""
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
+    json_dict["name"] = task_name
+    json_dict["description"] = ""
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = ""
+    json_dict["licence"] = ""
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {
         "0": "BF",
     }
-    json_dict['labels'] = {
+    json_dict["labels"] = {
         "0": "background",
         "1": "cell",
         "2": "border",
     }
 
-    json_dict['numTraining'] = len(train_patient_names)
-    json_dict['numTest'] = len(test_patient_names)
-    json_dict['training'] = [{'image': "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i} for i in
-                             train_patient_names]
-    json_dict['test'] = ["./imagesTs/%s.nii.gz" % i for i in test_patient_names]
+    json_dict["numTraining"] = len(train_patient_names)
+    json_dict["numTest"] = len(test_patient_names)
+    json_dict["training"] = [
+        {"image": "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i}
+        for i in train_patient_names
+    ]
+    json_dict["test"] = ["./imagesTs/%s.nii.gz" % i for i in test_patient_names]
 
     save_json(json_dict, os.path.join(out_base, "dataset.json"))
     p.close()
     p.join()
 
 
-def convert_to_instance_seg(arr: np.ndarray, spacing: tuple = (0.125, 0.125), small_center_threshold: int = 30,
-                            isolated_border_as_separate_instance_threshold=15):
-    from skimage.morphology import label, dilation
+def convert_to_instance_seg(
+    arr: np.ndarray,
+    spacing: tuple = (0.125, 0.125),
+    small_center_threshold: int = 30,
+    isolated_border_as_separate_instance_threshold=15,
+):
+    from skimage.morphology import dilation, label
 
     # we first identify centers that are too small and set them to be border. This should remove false positive instances
     objects = label((arr == 1).astype(int))
@@ -168,16 +220,21 @@ def convert_to_instance_seg(arr: np.ndarray, spacing: tuple = (0.125, 0.125), sm
                 strel_size[i] = 1
         ball_here = disk(1)
 
-        if strel_size[0] == 0: ball_here = ball_here[1:2]
-        if strel_size[1] == 0: ball_here = ball_here[:, 1:2]
+        if strel_size[0] == 0:
+            ball_here = ball_here[1:2]
+        if strel_size[1] == 0:
+            ball_here = ball_here[:, 1:2]
 
-        #print(1)
+        # print(1)
         dilated = dilation(current, ball_here)
         diff = (current == 0) & (dilated != current)
         final[diff & remaining_border] = dilated[diff & remaining_border]
         remaining_border[diff] = 0
         current = dilated
-        dilated_mm = [dilated_mm[i] + spacing[i] if strel_size[i] == 1 else dilated_mm[i] for i in range(2)]
+        dilated_mm = [
+            dilated_mm[i] + spacing[i] if strel_size[i] == 1 else dilated_mm[i]
+            for i in range(2)
+        ]
 
     # what can happen is that a cell is so small that the network only predicted border and no core. This cell will be
     # fused with the nearest other instance, which we don't want. Therefore we identify isolated border predictions and
@@ -188,12 +245,12 @@ def convert_to_instance_seg(arr: np.ndarray, spacing: tuple = (0.125, 0.125), sm
 
     foreground_objects = label((arr != 0).astype(int))
     for i in np.unique(foreground_objects):
-        if i > 0 and (1 not in np.unique(arr[foreground_objects==i])):
-            size_of_object = np.sum(foreground_objects==i)
+        if i > 0 and (1 not in np.unique(arr[foreground_objects == i])):
+            size_of_object = np.sum(foreground_objects == i)
             if size_of_object >= isolated_border_as_separate_instance_threshold:
                 final[foreground_objects == i] = max_label + 1
                 max_label += 1
-                #print('yeah boi')
+                # print('yeah boi')
 
     return final.astype(np.uint32)
 
@@ -207,7 +264,9 @@ def load_convert_to_instance_save(file_in: str, file_out: str, spacing):
     sitk.WriteImage(out_itk, file_out)
 
 
-def convert_folder_to_instanceseg(folder_in: str, folder_out: str, spacing, processes: int = 12):
+def convert_folder_to_instanceseg(
+    folder_in: str, folder_out: str, spacing, processes: int = 12
+):
     input_files = subfiles(folder_in, suffix=".nii.gz", join=False)
     maybe_mkdir_p(folder_out)
     output_files = [join(folder_out, i) for i in input_files]
@@ -215,12 +274,7 @@ def convert_folder_to_instanceseg(folder_in: str, folder_out: str, spacing, proc
     p = Pool(processes)
     r = []
     for i, o in zip(input_files, output_files):
-        r.append(
-            p.starmap_async(
-                load_convert_to_instance_save,
-                ((i, o, spacing),)
-            )
-        )
+        r.append(p.starmap_async(load_convert_to_instance_save, ((i, o, spacing),)))
     _ = [i.get() for i in r]
     p.close()
     p.join()
@@ -228,12 +282,12 @@ def convert_folder_to_instanceseg(folder_in: str, folder_out: str, spacing, proc
 
 def convert_to_tiff(nifti_image: str, output_name: str):
     npy = sitk.GetArrayFromImage(sitk.ReadImage(nifti_image))
-    imsave(output_name, npy[0].astype(np.uint16),  compress=6)
+    imsave(output_name, npy[0].astype(np.uint16), compress=6)
 
 
 if __name__ == "__main__":
     base = "/home/fabian/Downloads/Fluo-N2DH-SIM+"
-    task_name = 'Fluo-N2DH-SIM'
+    task_name = "Fluo-N2DH-SIM"
     spacing = (0.125, 0.125)
 
     task_id = 999
@@ -242,46 +296,75 @@ if __name__ == "__main__":
 
     task_id = 89
     additional_time_steps = 4
-    task_name = 'Fluo-N2DH-SIM_thickborder_time'
-    full_taskname = 'Task%03.0d_' % task_id + task_name
+    task_name = "Fluo-N2DH-SIM_thickborder_time"
+    full_taskname = "Task%03.0d_" % task_id + task_name
     output_raw = join(nnUNet_raw_data, full_taskname)
     shutil.rmtree(output_raw)
-    shutil.copytree(join(nnUNet_raw_data, 'Task999_Fluo-N2DH-SIM_thickborder'), output_raw)
+    shutil.copytree(
+        join(nnUNet_raw_data, "Task999_Fluo-N2DH-SIM_thickborder"), output_raw
+    )
 
-    shutil.rmtree(join(nnUNet_raw_data, 'Task999_Fluo-N2DH-SIM_thickborder'))
+    shutil.rmtree(join(nnUNet_raw_data, "Task999_Fluo-N2DH-SIM_thickborder"))
 
     # now add additional time information
-    for fld in ['imagesTr', 'imagesTs']:
+    for fld in ["imagesTr", "imagesTs"]:
         curr = join(output_raw, fld)
-        for seq in ['01', '02']:
+        for seq in ["01", "02"]:
             images = subfiles(curr, prefix=seq, join=False)
             for i in images:
-                current_timestep = int(i.split('_')[1][1:])
-                renamed = join(curr, i.replace("_0000", "_%04.0d" % additional_time_steps))
+                current_timestep = int(i.split("_")[1][1:])
+                renamed = join(
+                    curr, i.replace("_0000", "_%04.0d" % additional_time_steps)
+                )
                 shutil.move(join(curr, i), renamed)
                 for previous_timestep in range(-additional_time_steps, 0):
                     # previous time steps will already have been processed and renamed!
-                    expected_filename = join(curr, seq + "_t%03.0d" % (
-                                current_timestep + previous_timestep) + "_%04.0d" % additional_time_steps + ".nii.gz")
+                    expected_filename = join(
+                        curr,
+                        seq
+                        + "_t%03.0d" % (current_timestep + previous_timestep)
+                        + "_%04.0d" % additional_time_steps
+                        + ".nii.gz",
+                    )
                     if not isfile(expected_filename):
                         # create empty image
                         img = sitk.ReadImage(renamed)
-                        empty = sitk.GetImageFromArray(np.zeros_like(sitk.GetArrayFromImage(img)))
+                        empty = sitk.GetImageFromArray(
+                            np.zeros_like(sitk.GetArrayFromImage(img))
+                        )
                         empty.CopyInformation(img)
-                        sitk.WriteImage(empty, join(curr, i.replace("_0000", "_%04.0d" % (
-                                    additional_time_steps + previous_timestep))))
+                        sitk.WriteImage(
+                            empty,
+                            join(
+                                curr,
+                                i.replace(
+                                    "_0000",
+                                    "_%04.0d"
+                                    % (additional_time_steps + previous_timestep),
+                                ),
+                            ),
+                        )
                     else:
-                        shutil.copy(expected_filename, join(curr, i.replace("_0000", "_%04.0d" % (
-                                    additional_time_steps + previous_timestep))))
-    dataset = load_json(join(output_raw, 'dataset.json'))
-    dataset['modality'] = {
-        '0': 't_minus 4',
-        '1': 't_minus 3',
-        '2': 't_minus 2',
-        '3': 't_minus 1',
-        '4': 'frame of interest',
+                        shutil.copy(
+                            expected_filename,
+                            join(
+                                curr,
+                                i.replace(
+                                    "_0000",
+                                    "_%04.0d"
+                                    % (additional_time_steps + previous_timestep),
+                                ),
+                            ),
+                        )
+    dataset = load_json(join(output_raw, "dataset.json"))
+    dataset["modality"] = {
+        "0": "t_minus 4",
+        "1": "t_minus 3",
+        "2": "t_minus 2",
+        "3": "t_minus 1",
+        "4": "frame of interest",
     }
-    save_json(dataset, join(output_raw, 'dataset.json'))
+    save_json(dataset, join(output_raw, "dataset.json"))
 
     # we do not need custom splits since we train on all training cases
 

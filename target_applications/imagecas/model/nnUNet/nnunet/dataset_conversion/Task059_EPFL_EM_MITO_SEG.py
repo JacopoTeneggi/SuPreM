@@ -13,16 +13,15 @@
 #    limitations under the License.
 
 
-import numpy as np
+import shutil
 import subprocess
 from collections import OrderedDict
-from nnunet.paths import nnUNet_raw_data
-from batchgenerators.utilities.file_and_folder_operations import *
-import shutil
-from skimage import io
-import SimpleITK as sitk
-import shutil
 
+import numpy as np
+import SimpleITK as sitk
+from batchgenerators.utilities.file_and_folder_operations import *
+from nnunet.paths import nnUNet_raw_data
+from skimage import io
 
 if __name__ == "__main__":
     # download from here https://www.epfl.ch/labs/cvlab/data/data-em/
@@ -64,10 +63,18 @@ if __name__ == "__main__":
 
     # 5 copies, otherwise we cannot run nnunet (5 fold cv needs that)
     sitk.WriteImage(img_tr_itk, join(imagestr, "training0_0000.nii.gz"))
-    shutil.copy(join(imagestr, "training0_0000.nii.gz"), join(imagestr, "training1_0000.nii.gz"))
-    shutil.copy(join(imagestr, "training0_0000.nii.gz"), join(imagestr, "training2_0000.nii.gz"))
-    shutil.copy(join(imagestr, "training0_0000.nii.gz"), join(imagestr, "training3_0000.nii.gz"))
-    shutil.copy(join(imagestr, "training0_0000.nii.gz"), join(imagestr, "training4_0000.nii.gz"))
+    shutil.copy(
+        join(imagestr, "training0_0000.nii.gz"), join(imagestr, "training1_0000.nii.gz")
+    )
+    shutil.copy(
+        join(imagestr, "training0_0000.nii.gz"), join(imagestr, "training2_0000.nii.gz")
+    )
+    shutil.copy(
+        join(imagestr, "training0_0000.nii.gz"), join(imagestr, "training3_0000.nii.gz")
+    )
+    shutil.copy(
+        join(imagestr, "training0_0000.nii.gz"), join(imagestr, "training4_0000.nii.gz")
+    )
 
     sitk.WriteImage(lab_tr_itk, join(labelstr, "training0.nii.gz"))
     shutil.copy(join(labelstr, "training0.nii.gz"), join(labelstr, "training1.nii.gz"))
@@ -79,21 +86,26 @@ if __name__ == "__main__":
     sitk.WriteImage(lab_te_itk, join(labelste, "testing.nii.gz"))
 
     json_dict = OrderedDict()
-    json_dict['name'] = task_name
-    json_dict['description'] = task_name
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = "see challenge website"
-    json_dict['licence'] = "see challenge website"
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
+    json_dict["name"] = task_name
+    json_dict["description"] = task_name
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = "see challenge website"
+    json_dict["licence"] = "see challenge website"
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {
         "0": "EM",
     }
-    json_dict['labels'] = {i: str(i) for i in range(2)}
+    json_dict["labels"] = {i: str(i) for i in range(2)}
 
-    json_dict['numTraining'] = 5
-    json_dict['numTest'] = 1
-    json_dict['training'] = [{'image': "./imagesTr/training%d.nii.gz" % i, "label": "./labelsTr/training%d.nii.gz" % i} for i in
-                             range(5)]
-    json_dict['test'] = ["./imagesTs/testing.nii.gz"]
+    json_dict["numTraining"] = 5
+    json_dict["numTest"] = 1
+    json_dict["training"] = [
+        {
+            "image": "./imagesTr/training%d.nii.gz" % i,
+            "label": "./labelsTr/training%d.nii.gz" % i,
+        }
+        for i in range(5)
+    ]
+    json_dict["test"] = ["./imagesTs/testing.nii.gz"]
 
     save_json(json_dict, os.path.join(out_base, "dataset.json"))

@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 import torch
-from nnunet.network_architecture.generic_UNet import Generic_UNet, ConvDropoutNonlinNorm
+from nnunet.network_architecture.generic_UNet import ConvDropoutNonlinNorm, Generic_UNet
 from nnunet.network_architecture.initialization import InitWeights_He
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from nnunet.utilities.nd_softmax import softmax_helper
@@ -31,16 +31,35 @@ class nnUNetTrainerV2_ReLU_convReLUIN(nnUNetTrainerV2):
             dropout_op = nn.Dropout2d
             norm_op = nn.InstanceNorm2d
 
-        norm_op_kwargs = {'eps': 1e-5, 'affine': True}
-        dropout_op_kwargs = {'p': 0, 'inplace': True}
+        norm_op_kwargs = {"eps": 1e-5, "affine": True}
+        dropout_op_kwargs = {"p": 0, "inplace": True}
         net_nonlin = nn.ReLU
-        net_nonlin_kwargs = {'inplace': True}
-        self.network = Generic_UNet(self.num_input_channels, self.base_num_features, self.num_classes,
-                                    len(self.net_num_pool_op_kernel_sizes),
-                                    self.conv_per_stage, 2, conv_op, norm_op, norm_op_kwargs, dropout_op, dropout_op_kwargs,
-                                    net_nonlin, net_nonlin_kwargs, True, False, lambda x: x, InitWeights_He(0),
-                                    self.net_num_pool_op_kernel_sizes, self.net_conv_kernel_sizes, False, True, True,
-                                    basic_block=ConvDropoutNonlinNorm)
+        net_nonlin_kwargs = {"inplace": True}
+        self.network = Generic_UNet(
+            self.num_input_channels,
+            self.base_num_features,
+            self.num_classes,
+            len(self.net_num_pool_op_kernel_sizes),
+            self.conv_per_stage,
+            2,
+            conv_op,
+            norm_op,
+            norm_op_kwargs,
+            dropout_op,
+            dropout_op_kwargs,
+            net_nonlin,
+            net_nonlin_kwargs,
+            True,
+            False,
+            lambda x: x,
+            InitWeights_He(0),
+            self.net_num_pool_op_kernel_sizes,
+            self.net_conv_kernel_sizes,
+            False,
+            True,
+            True,
+            basic_block=ConvDropoutNonlinNorm,
+        )
         if torch.cuda.is_available():
             self.network.cuda()
         self.network.inference_apply_nonlin = softmax_helper

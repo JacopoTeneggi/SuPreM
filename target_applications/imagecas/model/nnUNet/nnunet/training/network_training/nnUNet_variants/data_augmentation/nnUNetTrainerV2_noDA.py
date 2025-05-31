@@ -16,8 +16,14 @@ from typing import Tuple
 import numpy as np
 from batchgenerators.utilities.file_and_folder_operations import join, maybe_mkdir_p
 from nnunet.network_architecture.neural_network import SegmentationNetwork
-from nnunet.training.data_augmentation.default_data_augmentation import get_no_augmentation
-from nnunet.training.dataloading.dataset_loading import unpack_dataset, DataLoader3D, DataLoader2D
+from nnunet.training.data_augmentation.default_data_augmentation import (
+    get_no_augmentation,
+)
+from nnunet.training.dataloading.dataset_loading import (
+    DataLoader2D,
+    DataLoader3D,
+    unpack_dataset,
+)
 from nnunet.training.loss_functions.deep_supervision import MultipleOutputLoss2
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from torch import nn
@@ -35,21 +41,47 @@ class nnUNetTrainerV2_noDataAugmentation(nnUNetTrainerV2):
         self.do_split()
 
         if self.threeD:
-            dl_tr = DataLoader3D(self.dataset_tr, self.patch_size, self.patch_size, self.batch_size,
-                                 False, oversample_foreground_percent=self.oversample_foreground_percent
-                                 , pad_mode="constant", pad_sides=self.pad_all_sides)
-            dl_val = DataLoader3D(self.dataset_val, self.patch_size, self.patch_size, self.batch_size, False,
-                                  oversample_foreground_percent=self.oversample_foreground_percent,
-                                  pad_mode="constant", pad_sides=self.pad_all_sides)
+            dl_tr = DataLoader3D(
+                self.dataset_tr,
+                self.patch_size,
+                self.patch_size,
+                self.batch_size,
+                False,
+                oversample_foreground_percent=self.oversample_foreground_percent,
+                pad_mode="constant",
+                pad_sides=self.pad_all_sides,
+            )
+            dl_val = DataLoader3D(
+                self.dataset_val,
+                self.patch_size,
+                self.patch_size,
+                self.batch_size,
+                False,
+                oversample_foreground_percent=self.oversample_foreground_percent,
+                pad_mode="constant",
+                pad_sides=self.pad_all_sides,
+            )
         else:
-            dl_tr = DataLoader2D(self.dataset_tr, self.patch_size, self.patch_size, self.batch_size,
-                                 transpose=self.plans.get('transpose_forward'),
-                                 oversample_foreground_percent=self.oversample_foreground_percent
-                                 , pad_mode="constant", pad_sides=self.pad_all_sides)
-            dl_val = DataLoader2D(self.dataset_val, self.patch_size, self.patch_size, self.batch_size,
-                                  transpose=self.plans.get('transpose_forward'),
-                                  oversample_foreground_percent=self.oversample_foreground_percent,
-                                  pad_mode="constant", pad_sides=self.pad_all_sides)
+            dl_tr = DataLoader2D(
+                self.dataset_tr,
+                self.patch_size,
+                self.patch_size,
+                self.batch_size,
+                transpose=self.plans.get("transpose_forward"),
+                oversample_foreground_percent=self.oversample_foreground_percent,
+                pad_mode="constant",
+                pad_sides=self.pad_all_sides,
+            )
+            dl_val = DataLoader2D(
+                self.dataset_val,
+                self.patch_size,
+                self.patch_size,
+                self.batch_size,
+                transpose=self.plans.get("transpose_forward"),
+                oversample_foreground_percent=self.oversample_foreground_percent,
+                pad_mode="constant",
+                pad_sides=self.pad_all_sides,
+            )
         return dl_tr, dl_val
 
     def initialize(self, training=True, force_load_plans=False):
@@ -69,10 +101,12 @@ class nnUNetTrainerV2_noDataAugmentation(nnUNetTrainerV2):
 
             # we give each output a weight which decreases exponentially (division by 2) as the resolution decreases
             # this gives higher resolution outputs more weight in the loss
-            weights = np.array([1 / (2 ** i) for i in range(net_numpool)])
+            weights = np.array([1 / (2**i) for i in range(net_numpool)])
 
             # we don't use the lowest 2 outputs. Normalize weights so that they sum to 1
-            mask = np.array([True if i < net_numpool - 1 else False for i in range(net_numpool)])
+            mask = np.array(
+                [True if i < net_numpool - 1 else False for i in range(net_numpool)]
+            )
             weights[~mask] = 0
             weights = weights / weights.sum()
 
@@ -80,8 +114,10 @@ class nnUNetTrainerV2_noDataAugmentation(nnUNetTrainerV2):
             self.loss = MultipleOutputLoss2(self.loss, weights)
             ################# END ###################
 
-            self.folder_with_preprocessed_data = join(self.dataset_directory, self.plans['data_identifier'] +
-                                                      "_stage%d" % self.stage)
+            self.folder_with_preprocessed_data = join(
+                self.dataset_directory,
+                self.plans["data_identifier"] + "_stage%d" % self.stage,
+            )
             if training:
                 self.dl_tr, self.dl_val = self.get_basic_generators()
                 if self.unpack_data:
@@ -90,19 +126,27 @@ class nnUNetTrainerV2_noDataAugmentation(nnUNetTrainerV2):
                     print("done")
                 else:
                     print(
-                        "INFO: Not unpacking data! Training may be slow due to that. Pray you are not using 2d or you "
-                        "will wait all winter for your model to finish!")
+                        "INFO: Not unpacking data! Training may be slow due to that."
+                        " Pray you are not using 2d or you will wait all winter for"
+                        " your model to finish!"
+                    )
 
-                self.tr_gen, self.val_gen = get_no_augmentation(self.dl_tr, self.dl_val,
-                                                                    self.data_aug_params[
-                                                                        'patch_size_for_spatialtransform'],
-                                                                    self.data_aug_params,
-                                                                    deep_supervision_scales=self.deep_supervision_scales,
-                                                                    pin_memory=self.pin_memory)
-                self.print_to_log_file("TRAINING KEYS:\n %s" % (str(self.dataset_tr.keys())),
-                                       also_print_to_console=False)
-                self.print_to_log_file("VALIDATION KEYS:\n %s" % (str(self.dataset_val.keys())),
-                                       also_print_to_console=False)
+                self.tr_gen, self.val_gen = get_no_augmentation(
+                    self.dl_tr,
+                    self.dl_val,
+                    self.data_aug_params["patch_size_for_spatialtransform"],
+                    self.data_aug_params,
+                    deep_supervision_scales=self.deep_supervision_scales,
+                    pin_memory=self.pin_memory,
+                )
+                self.print_to_log_file(
+                    "TRAINING KEYS:\n %s" % (str(self.dataset_tr.keys())),
+                    also_print_to_console=False,
+                )
+                self.print_to_log_file(
+                    "VALIDATION KEYS:\n %s" % (str(self.dataset_val.keys())),
+                    also_print_to_console=False,
+                )
             else:
                 pass
 
@@ -111,30 +155,50 @@ class nnUNetTrainerV2_noDataAugmentation(nnUNetTrainerV2):
 
             assert isinstance(self.network, (SegmentationNetwork, nn.DataParallel))
         else:
-            self.print_to_log_file('self.was_initialized is True, not running self.initialize again')
+            self.print_to_log_file(
+                "self.was_initialized is True, not running self.initialize again"
+            )
         self.was_initialized = True
 
-    def validate(self, do_mirroring: bool = True, use_sliding_window: bool = True,
-                 step_size: float = 0.5, save_softmax: bool = True, use_gaussian: bool = True, overwrite: bool = True,
-                 validation_folder_name: str = 'validation_raw', debug: bool = False, all_in_gpu: bool = False,
-                 segmentation_export_kwargs: dict = None):
+    def validate(
+        self,
+        do_mirroring: bool = True,
+        use_sliding_window: bool = True,
+        step_size: float = 0.5,
+        save_softmax: bool = True,
+        use_gaussian: bool = True,
+        overwrite: bool = True,
+        validation_folder_name: str = "validation_raw",
+        debug: bool = False,
+        all_in_gpu: bool = False,
+        segmentation_export_kwargs: dict = None,
+    ):
         """
         We need to wrap this because we need to enforce self.network.do_ds = False for prediction
 
         """
         ds = self.network.do_ds
         if do_mirroring:
-            print("WARNING! do_mirroring was True but we cannot do that because we trained without mirroring. "
-                  "do_mirroring was set to False")
+            print(
+                "WARNING! do_mirroring was True but we cannot do that because we"
+                " trained without mirroring. do_mirroring was set to False"
+            )
         do_mirroring = False
         self.network.do_ds = False
-        ret = super().validate(do_mirroring=do_mirroring, use_sliding_window=use_sliding_window, step_size=step_size,
-                               save_softmax=save_softmax, use_gaussian=use_gaussian,
-                               overwrite=overwrite, validation_folder_name=validation_folder_name, debug=debug,
-                               all_in_gpu=all_in_gpu, segmentation_export_kwargs=segmentation_export_kwargs)
+        ret = super().validate(
+            do_mirroring=do_mirroring,
+            use_sliding_window=use_sliding_window,
+            step_size=step_size,
+            save_softmax=save_softmax,
+            use_gaussian=use_gaussian,
+            overwrite=overwrite,
+            validation_folder_name=validation_folder_name,
+            debug=debug,
+            all_in_gpu=all_in_gpu,
+            segmentation_export_kwargs=segmentation_export_kwargs,
+        )
         self.network.do_ds = ds
         return ret
-
 
 
 nnUNetTrainerV2_noDataAugmentation_copy1 = nnUNetTrainerV2_noDataAugmentation

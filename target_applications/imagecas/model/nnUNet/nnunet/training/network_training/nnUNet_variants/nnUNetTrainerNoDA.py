@@ -14,10 +14,16 @@
 
 
 import matplotlib
-from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p, join
+from batchgenerators.utilities.file_and_folder_operations import join, maybe_mkdir_p
 from nnunet.network_architecture.neural_network import SegmentationNetwork
-from nnunet.training.data_augmentation.default_data_augmentation import get_no_augmentation
-from nnunet.training.dataloading.dataset_loading import unpack_dataset, DataLoader3D, DataLoader2D
+from nnunet.training.data_augmentation.default_data_augmentation import (
+    get_no_augmentation,
+)
+from nnunet.training.dataloading.dataset_loading import (
+    DataLoader2D,
+    DataLoader3D,
+    unpack_dataset,
+)
 from nnunet.training.network_training.nnUNetTrainer import nnUNetTrainer
 from torch import nn
 
@@ -30,21 +36,47 @@ class nnUNetTrainerNoDA(nnUNetTrainer):
         self.do_split()
 
         if self.threeD:
-            dl_tr = DataLoader3D(self.dataset_tr, self.patch_size, self.patch_size, self.batch_size,
-                                 False, oversample_foreground_percent=self.oversample_foreground_percent
-                                 , pad_mode="constant", pad_sides=self.pad_all_sides)
-            dl_val = DataLoader3D(self.dataset_val, self.patch_size, self.patch_size, self.batch_size, False,
-                                  oversample_foreground_percent=self.oversample_foreground_percent,
-                                  pad_mode="constant", pad_sides=self.pad_all_sides)
+            dl_tr = DataLoader3D(
+                self.dataset_tr,
+                self.patch_size,
+                self.patch_size,
+                self.batch_size,
+                False,
+                oversample_foreground_percent=self.oversample_foreground_percent,
+                pad_mode="constant",
+                pad_sides=self.pad_all_sides,
+            )
+            dl_val = DataLoader3D(
+                self.dataset_val,
+                self.patch_size,
+                self.patch_size,
+                self.batch_size,
+                False,
+                oversample_foreground_percent=self.oversample_foreground_percent,
+                pad_mode="constant",
+                pad_sides=self.pad_all_sides,
+            )
         else:
-            dl_tr = DataLoader2D(self.dataset_tr, self.patch_size, self.patch_size, self.batch_size,
-                                 transpose=self.plans.get('transpose_forward'),
-                                 oversample_foreground_percent=self.oversample_foreground_percent
-                                 , pad_mode="constant", pad_sides=self.pad_all_sides)
-            dl_val = DataLoader2D(self.dataset_val, self.patch_size, self.patch_size, self.batch_size,
-                                  transpose=self.plans.get('transpose_forward'),
-                                  oversample_foreground_percent=self.oversample_foreground_percent,
-                                  pad_mode="constant", pad_sides=self.pad_all_sides)
+            dl_tr = DataLoader2D(
+                self.dataset_tr,
+                self.patch_size,
+                self.patch_size,
+                self.batch_size,
+                transpose=self.plans.get("transpose_forward"),
+                oversample_foreground_percent=self.oversample_foreground_percent,
+                pad_mode="constant",
+                pad_sides=self.pad_all_sides,
+            )
+            dl_val = DataLoader2D(
+                self.dataset_val,
+                self.patch_size,
+                self.patch_size,
+                self.batch_size,
+                transpose=self.plans.get("transpose_forward"),
+                oversample_foreground_percent=self.oversample_foreground_percent,
+                pad_mode="constant",
+                pad_sides=self.pad_all_sides,
+            )
         return dl_tr, dl_val
 
     def initialize(self, training=True, force_load_plans=False):
@@ -64,8 +96,10 @@ class nnUNetTrainerNoDA(nnUNetTrainer):
 
         self.setup_DA_params()
 
-        self.folder_with_preprocessed_data = join(self.dataset_directory, self.plans['data_identifier'] +
-                                                  "_stage%d" % self.stage)
+        self.folder_with_preprocessed_data = join(
+            self.dataset_directory,
+            self.plans["data_identifier"] + "_stage%d" % self.stage,
+        )
         if training:
             self.dl_tr, self.dl_val = self.get_basic_generators()
             if self.unpack_data:
@@ -73,19 +107,28 @@ class nnUNetTrainerNoDA(nnUNetTrainer):
                 unpack_dataset(self.folder_with_preprocessed_data)
                 print("done")
             else:
-                print("INFO: Not unpacking data! Training may be slow due to that. Pray you are not using 2d or you "
-                      "will wait all winter for your model to finish!")
-            self.tr_gen, self.val_gen = get_no_augmentation(self.dl_tr, self.dl_val,
-                                                                 self.data_aug_params[
-                                                                     'patch_size_for_spatialtransform'],
-                                                                 self.data_aug_params)
-            self.print_to_log_file("TRAINING KEYS:\n %s" % (str(self.dataset_tr.keys())),
-                                   also_print_to_console=False)
-            self.print_to_log_file("VALIDATION KEYS:\n %s" % (str(self.dataset_val.keys())),
-                                   also_print_to_console=False)
+                print(
+                    "INFO: Not unpacking data! Training may be slow due to that. Pray"
+                    " you are not using 2d or you will wait all winter for your model"
+                    " to finish!"
+                )
+            self.tr_gen, self.val_gen = get_no_augmentation(
+                self.dl_tr,
+                self.dl_val,
+                self.data_aug_params["patch_size_for_spatialtransform"],
+                self.data_aug_params,
+            )
+            self.print_to_log_file(
+                "TRAINING KEYS:\n %s" % (str(self.dataset_tr.keys())),
+                also_print_to_console=False,
+            )
+            self.print_to_log_file(
+                "VALIDATION KEYS:\n %s" % (str(self.dataset_val.keys())),
+                also_print_to_console=False,
+            )
         else:
             pass
         self.initialize_network()
         assert isinstance(self.network, (SegmentationNetwork, nn.DataParallel))
         self.was_initialized = True
-        self.data_aug_params['mirror_axes'] = ()
+        self.data_aug_params["mirror_axes"] = ()

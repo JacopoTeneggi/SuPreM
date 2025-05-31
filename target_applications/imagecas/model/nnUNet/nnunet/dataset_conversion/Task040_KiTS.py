@@ -13,14 +13,14 @@
 #    limitations under the License.
 
 
-from copy import deepcopy
-
-from batchgenerators.utilities.file_and_folder_operations import *
 import shutil
-import SimpleITK as sitk
+from copy import deepcopy
 from multiprocessing import Pool
-from medpy.metric import dc
+
 import numpy as np
+import SimpleITK as sitk
+from batchgenerators.utilities.file_and_folder_operations import *
+from medpy.metric import dc
 from nnunet.paths import network_training_output_dir
 from scipy.ndimage import label
 
@@ -55,7 +55,7 @@ def evaluate_folder(folder_gt: str, folder_pred: str):
     p.close()
     p.join()
 
-    with open(join(folder_pred, "results.csv"), 'w') as f:
+    with open(join(folder_pred, "results.csv"), "w") as f:
         for i, ni in enumerate(niftis):
             f.write("%s,%0.4f,%0.4f,%0.4f\n" % (ni, *results[i]))
 
@@ -73,7 +73,9 @@ def remove_all_but_the_two_largest_conn_comp(img_itk_file: str, file_out: str):
         label_sizes = []
         for i in range(1, num_labels + 1):
             label_sizes.append(np.sum(labelmap == i))
-        argsrt = np.argsort(label_sizes)[::-1] # two largest are now argsrt[0] and argsrt[1]
+        argsrt = np.argsort(label_sizes)[
+            ::-1
+        ]  # two largest are now argsrt[0] and argsrt[1]
         keep_mask = (labelmap == argsrt[0] + 1) | (labelmap == argsrt[1] + 1)
         img_npy[~keep_mask] = 0
         new = sitk.GetImageFromArray(img_npy)
@@ -84,8 +86,7 @@ def remove_all_but_the_two_largest_conn_comp(img_itk_file: str, file_out: str):
         shutil.copy(img_itk_file, file_out)
 
 
-def manual_postprocess(folder_in,
-                       folder_out):
+def manual_postprocess(folder_in, folder_out):
     """
     This was not used. I was just curious because others used this. Turns out this is not necessary for my networks
     """
@@ -96,51 +97,69 @@ def manual_postprocess(folder_in,
     infiles = [join(folder_in, i) for i in infiles]
 
     p = Pool(8)
-    _ = p.starmap_async(remove_all_but_the_two_largest_conn_comp, zip(infiles, outfiles))
+    _ = p.starmap_async(
+        remove_all_but_the_two_largest_conn_comp, zip(infiles, outfiles)
+    )
     _ = _.get()
     p.close()
     p.join()
 
 
-
-
 def copy_npz_fom_valsets():
-    '''
+    """
     this is preparation for ensembling
     :return:
-    '''
+    """
     base = join(network_training_output_dir, "3d_lowres/Task048_KiTS_clean")
-    folders = ['nnUNetTrainerNewCandidate23_FabiansPreActResNet__nnUNetPlans',
-               'nnUNetTrainerNewCandidate23_FabiansResNet__nnUNetPlans',
-               'nnUNetTrainerNewCandidate23__nnUNetPlans']
+    folders = [
+        "nnUNetTrainerNewCandidate23_FabiansPreActResNet__nnUNetPlans",
+        "nnUNetTrainerNewCandidate23_FabiansResNet__nnUNetPlans",
+        "nnUNetTrainerNewCandidate23__nnUNetPlans",
+    ]
     for f in folders:
-        out = join(base, f, 'crossval_npz')
+        out = join(base, f, "crossval_npz")
         maybe_mkdir_p(out)
-        shutil.copy(join(base, f, 'plans.pkl'), out)
+        shutil.copy(join(base, f, "plans.pkl"), out)
         for fold in range(5):
-            cur = join(base, f, 'fold_%d' % fold, 'validation_raw')
-            npz_files = subfiles(cur, suffix='.npz', join=False)
-            pkl_files = [i[:-3] + 'pkl' for i in npz_files]
+            cur = join(base, f, "fold_%d" % fold, "validation_raw")
+            npz_files = subfiles(cur, suffix=".npz", join=False)
+            pkl_files = [i[:-3] + "pkl" for i in npz_files]
             assert all([isfile(join(cur, i)) for i in pkl_files])
             for n in npz_files:
-                corresponding_pkl = n[:-3] + 'pkl'
+                corresponding_pkl = n[:-3] + "pkl"
                 shutil.copy(join(cur, n), out)
                 shutil.copy(join(cur, corresponding_pkl), out)
 
 
-def ensemble(experiments=('nnUNetTrainerNewCandidate23_FabiansPreActResNet__nnUNetPlans',
-               'nnUNetTrainerNewCandidate23_FabiansResNet__nnUNetPlans'), out_dir="/media/fabian/Results/nnUNet/3d_lowres/Task048_KiTS_clean/ensemble_preactres_and_res"):
+def ensemble(
+    experiments=(
+        "nnUNetTrainerNewCandidate23_FabiansPreActResNet__nnUNetPlans",
+        "nnUNetTrainerNewCandidate23_FabiansResNet__nnUNetPlans",
+    ),
+    out_dir="/media/fabian/Results/nnUNet/3d_lowres/Task048_KiTS_clean/ensemble_preactres_and_res",
+):
     from nnunet.inference.ensemble_predictions import merge
-    folders = [join(network_training_output_dir, "3d_lowres/Task048_KiTS_clean", i, 'crossval_npz') for i in experiments]
+
+    folders = [
+        join(
+            network_training_output_dir,
+            "3d_lowres/Task048_KiTS_clean",
+            i,
+            "crossval_npz",
+        )
+        for i in experiments
+    ]
     merge(folders, out_dir, 8)
 
 
-def prepare_submission(fld= "/home/fabian/drives/datasets/results/nnUNet/test_sets/Task048_KiTS_clean/predicted_ens_3d_fullres_3d_cascade_fullres_postprocessed", # '/home/fabian/datasets_fabian/predicted_KiTS_nnUNetTrainerNewCandidate23_FabiansResNet',
-                       out='/home/fabian/drives/datasets/results/nnUNet/test_sets/Task048_KiTS_clean/submission'):
-    nii = subfiles(fld, join=False, suffix='.nii.gz')
+def prepare_submission(
+    fld="/home/fabian/drives/datasets/results/nnUNet/test_sets/Task048_KiTS_clean/predicted_ens_3d_fullres_3d_cascade_fullres_postprocessed",  # '/home/fabian/datasets_fabian/predicted_KiTS_nnUNetTrainerNewCandidate23_FabiansResNet',
+    out="/home/fabian/drives/datasets/results/nnUNet/test_sets/Task048_KiTS_clean/submission",
+):
+    nii = subfiles(fld, join=False, suffix=".nii.gz")
     maybe_mkdir_p(out)
     for n in nii:
-        outfname = n.replace('case', 'prediction')
+        outfname = n.replace("case", "prediction")
         shutil.copy(join(fld, n), join(out, outfname))
 
 
@@ -152,26 +171,30 @@ def pretent_to_be_nnUNetTrainer(base, folds=(0, 1, 2, 3, 4)):
     """
     for fold in folds:
         cur = join(base, "fold_%d" % fold)
-        pkl_file = join(cur, 'model_best.model.pkl')
+        pkl_file = join(cur, "model_best.model.pkl")
         a = load_pickle(pkl_file)
-        a['name_old'] = deepcopy(a['name'])
-        a['name'] = 'nnUNetTrainer'
+        a["name_old"] = deepcopy(a["name"])
+        a["name"] = "nnUNetTrainer"
         save_pickle(a, pkl_file)
 
 
 def reset_trainerName(base, folds=(0, 1, 2, 3, 4)):
     for fold in folds:
         cur = join(base, "fold_%d" % fold)
-        pkl_file = join(cur, 'model_best.model.pkl')
+        pkl_file = join(cur, "model_best.model.pkl")
         a = load_pickle(pkl_file)
-        a['name'] = a['name_old']
-        del a['name_old']
+        a["name"] = a["name_old"]
+        del a["name_old"]
         save_pickle(a, pkl_file)
 
 
-def nnUNetTrainer_these(experiments=('nnUNetTrainerNewCandidate23_FabiansPreActResNet__nnUNetPlans',
-               'nnUNetTrainerNewCandidate23_FabiansResNet__nnUNetPlans',
-               'nnUNetTrainerNewCandidate23__nnUNetPlans')):
+def nnUNetTrainer_these(
+    experiments=(
+        "nnUNetTrainerNewCandidate23_FabiansPreActResNet__nnUNetPlans",
+        "nnUNetTrainerNewCandidate23_FabiansResNet__nnUNetPlans",
+        "nnUNetTrainerNewCandidate23__nnUNetPlans",
+    )
+):
     """
     changes best checkpoint pickle nnunettrainer class name to nnUNetTrainer
     :param experiments:
@@ -183,9 +206,13 @@ def nnUNetTrainer_these(experiments=('nnUNetTrainerNewCandidate23_FabiansPreActR
         pretent_to_be_nnUNetTrainer(cur)
 
 
-def reset_trainerName_these(experiments=('nnUNetTrainerNewCandidate23_FabiansPreActResNet__nnUNetPlans',
-               'nnUNetTrainerNewCandidate23_FabiansResNet__nnUNetPlans',
-               'nnUNetTrainerNewCandidate23__nnUNetPlans')):
+def reset_trainerName_these(
+    experiments=(
+        "nnUNetTrainerNewCandidate23_FabiansPreActResNet__nnUNetPlans",
+        "nnUNetTrainerNewCandidate23_FabiansResNet__nnUNetPlans",
+        "nnUNetTrainerNewCandidate23__nnUNetPlans",
+    )
+):
     """
     changes best checkpoint pickle nnunettrainer class name to nnUNetTrainer
     :param experiments:
@@ -210,31 +237,37 @@ if __name__ == "__main__":
     for c in cases:
         case_id = int(c.split("_")[-1])
         if case_id < 210:
-            shutil.copy(join(base, c, "imaging.nii.gz"), join(out, "imagesTr", c + "_0000.nii.gz"))
-            shutil.copy(join(base, c, "segmentation.nii.gz"), join(out, "labelsTr", c + ".nii.gz"))
+            shutil.copy(
+                join(base, c, "imaging.nii.gz"),
+                join(out, "imagesTr", c + "_0000.nii.gz"),
+            )
+            shutil.copy(
+                join(base, c, "segmentation.nii.gz"),
+                join(out, "labelsTr", c + ".nii.gz"),
+            )
         else:
-            shutil.copy(join(base, c, "imaging.nii.gz"), join(out, "imagesTs", c + "_0000.nii.gz"))
+            shutil.copy(
+                join(base, c, "imaging.nii.gz"),
+                join(out, "imagesTs", c + "_0000.nii.gz"),
+            )
 
     json_dict = {}
-    json_dict['name'] = "KiTS"
-    json_dict['description'] = "kidney and kidney tumor segmentation"
-    json_dict['tensorImageSize'] = "4D"
-    json_dict['reference'] = "KiTS data for nnunet"
-    json_dict['licence'] = ""
-    json_dict['release'] = "0.0"
-    json_dict['modality'] = {
+    json_dict["name"] = "KiTS"
+    json_dict["description"] = "kidney and kidney tumor segmentation"
+    json_dict["tensorImageSize"] = "4D"
+    json_dict["reference"] = "KiTS data for nnunet"
+    json_dict["licence"] = ""
+    json_dict["release"] = "0.0"
+    json_dict["modality"] = {
         "0": "CT",
     }
-    json_dict['labels'] = {
-        "0": "background",
-        "1": "Kidney",
-        "2": "Tumor"
-    }
-    json_dict['numTraining'] = len(cases)
-    json_dict['numTest'] = 0
-    json_dict['training'] = [{'image': "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i} for i in
-                             cases]
-    json_dict['test'] = []
+    json_dict["labels"] = {"0": "background", "1": "Kidney", "2": "Tumor"}
+    json_dict["numTraining"] = len(cases)
+    json_dict["numTest"] = 0
+    json_dict["training"] = [
+        {"image": "./imagesTr/%s.nii.gz" % i, "label": "./labelsTr/%s.nii.gz" % i}
+        for i in cases
+    ]
+    json_dict["test"] = []
 
     save_json(json_dict, os.path.join(out, "dataset.json"))
-
