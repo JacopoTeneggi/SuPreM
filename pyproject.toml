@@ -28,6 +28,8 @@ dependencies = [
     "glob2>=0.7",
     "opencv-python>=4.11.0.86",
     "pytorch-lightning>=2.0.9.post0",
+    "wandb>=0.21.3",
+    "transformers==4.38.2",
 ]
 
 [tool.uv.sources]
